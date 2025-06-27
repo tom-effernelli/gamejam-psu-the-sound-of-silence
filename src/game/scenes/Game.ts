@@ -3,14 +3,116 @@ import { Scene } from 'phaser';
 
 export class Game extends Scene
 {
-    camera: Phaser.Cameras.Scene2D.Camera;
-    map: Phaser.Tilemaps.Tilemap;
-    player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-    cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+    private camera: Phaser.Cameras.Scene2D.Camera;
+    private map: Phaser.Tilemaps.Tilemap;
+    private player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+    private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+    
+    // Propriétés pour le microphone
+    private audioContext: AudioContext;
+    private mediaStream: MediaStream | null = null;
+    private audioAnalyser: AnalyserNode | null = null;
+    private dataArray: Uint8Array;
+    private micThreshold = 15; // Seuil plus bas pour mieux détecter
+    
+    // UI pour le son
+    private soundBar: Phaser.GameObjects.Graphics;
+    private soundBarBg: Phaser.GameObjects.Graphics;
+    private debugText: Phaser.GameObjects.Text;
 
     constructor ()
     {
         super('Game');
+        this.audioContext = new AudioContext();
+        this.dataArray = new Uint8Array(1024);
+    }
+
+    async initMicrophone() {
+        try {
+            console.log('Requesting microphone access...');
+            EventBus.emit('mic-status', 'Requesting access...', '#ffff00');
+            
+            this.mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: false
+                }
+            });
+            
+            this.audioContext = new AudioContext();
+            const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+            this.audioAnalyser = this.audioContext.createAnalyser();
+            this.audioAnalyser.fftSize = 2048;
+            this.audioAnalyser.smoothingTimeConstant = 0.8;
+            source.connect(this.audioAnalyser);
+            this.dataArray = new Uint8Array(this.audioAnalyser.frequencyBinCount);
+            
+            console.log('Microphone initialized successfully');
+            EventBus.emit('mic-status', 'Active ✓', '#00ff00');
+            
+        } catch (error: unknown) {
+            console.error('Error accessing microphone:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            EventBus.emit('mic-status', `Error: ${errorMessage}`, '#ff0000');
+        }
+    }
+
+    private createSoundUI() {
+        // Fond de la barre de son (noir)
+        this.soundBarBg = this.add.graphics();
+        this.soundBarBg.setScrollFactor(0);
+        this.soundBarBg.fillStyle(0x000000, 1);
+        this.soundBarBg.fillRect(20, 20, 200, 30);
+        
+        // Contour de la barre (blanc)
+        this.soundBarBg.lineStyle(2, 0xFFFFFF, 1);
+        this.soundBarBg.strokeRect(20, 20, 200, 30);
+
+        // Barre de son active
+        this.soundBar = this.add.graphics();
+        this.soundBar.setScrollFactor(0);
+
+        // Texte de debug (plus grand et plus visible)
+        this.debugText = this.add.text(20, 60, 'Sound level: 0', {
+            fontSize: '24px',
+            color: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        });
+        this.debugText.setScrollFactor(0);
+        
+        // Texte d'état du micro
+        this.add.text(20, 100, 'Microphone Status: Initializing...', {
+            fontSize: '18px',
+            color: '#ffff00',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        }).setScrollFactor(0);
+    }
+
+    private processMicrophoneInput() {
+        if (!this.audioAnalyser) {
+            return;
+        }
+
+        this.audioAnalyser.getByteFrequencyData(this.dataArray);
+        
+        // Calculer la moyenne du volume
+        let sum = 0;
+        const numFrequencies = 50;
+        for (let i = 0; i < numFrequencies; i++) {
+            sum += this.dataArray[i];
+        }
+        const average = sum / numFrequencies;
+        
+        // Émettre le niveau sonore pour l'UI
+        EventBus.emit('sound-level', average);
+
+        // Si le son dépasse le seuil
+        if (average > this.micThreshold) {
+            console.log('Sound detected:', average);
+        }
     }
 
     preload ()
@@ -23,12 +125,18 @@ export class Game extends Scene
         this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
     }
 
-    create ()
-    {
+    async create() {
         // Active la physique Arcade
         this.physics.world.setBounds(0, 0, 1280, 1280);
 
         this.camera = this.cameras.main;
+        
+        // Création de l'interface du son AVANT l'initialisation du micro
+        this.createSoundUI();
+        console.log('Sound UI created');
+        
+        // Initialisation du microphone
+        await this.initMicrophone();
         
         // Création de la tilemap
         this.map = this.make.tilemap({ key: 'map' });
@@ -76,6 +184,9 @@ export class Game extends Scene
 
     update()
     {
+        // Traitement du son du microphone
+        this.processMicrophoneInput();
+
         // Gestion des déplacements du joueur
         const speed = 175;
 
