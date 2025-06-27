@@ -7,7 +7,7 @@ export class TimerUI extends Scene {
     private timerText: Phaser.GameObjects.Text;
     private timerValue: number = 100;
     private timer: Phaser.Time.TimerEvent;
-    private decreaseAmount: number = 2; // Diminue de 2 par tick au lieu de 1
+    private decreaseAmount: number = 0.5; // Diminue de 2 par tick au lieu de 1
     private flashEffect: Phaser.GameObjects.Graphics;
 
     constructor() {
@@ -42,7 +42,7 @@ export class TimerUI extends Scene {
 
         // Timer plus rapide (500ms au lieu de 1000ms)
         this.timer = this.time.addEvent({
-            delay: 500,
+            delay: 50,
             callback: this.decrementTimer,
             callbackScope: this,
             loop: true
@@ -84,9 +84,15 @@ export class TimerUI extends Scene {
             // Diminue plus rapidement
             this.timerValue = Math.max(0, this.timerValue - this.decreaseAmount);
             this.updateTimerBar();
-            
-            if (this.timerValue === 0) {
+
+            if (this.timerValue <= 0) {
+                this.timerValue = 0;
+                this.timer.paused = true;
                 EventBus.emit('timer-ended');
+                this.scene.stop('Game');
+                this.scene.stop('TimerUI');
+                this.scene.stop('SoundUI');
+                this.scene.start('GameOver');
             }
         }
     }
@@ -100,8 +106,11 @@ export class TimerUI extends Scene {
 
         // Mettre à jour le texte
         if (this.timerText) {
-            this.timerText.setText(`Time: ${this.timerValue}`);
+            this.timerText.setText(`Mental Health`);
         }
+
+        // Émettre la nouvelle valeur du timer
+        EventBus.emit('timer-update', this.timerValue);
     }
 
     private getTimerColor(): number {

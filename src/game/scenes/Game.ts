@@ -25,6 +25,7 @@ export class Game extends Scene
     private spotlight: Phaser.GameObjects.Light;
     private mask: Phaser.Display.Masks.GeometryMask;
     private lightCircle: Phaser.GameObjects.Graphics;
+    private timerValue: number = 100; // Nouvelle propriété pour stocker la valeur du timer
 
     constructor ()
     {
@@ -188,13 +189,18 @@ export class Game extends Scene
             this.camera.setZoom(1.5);
         }
 
+        // Écouter les changements de valeur du timer
+        EventBus.on('timer-update', (value: number) => {
+            this.timerValue = value;
+        });
+
         EventBus.emit('current-scene-ready', this);
     }
 
     private createShadowSystem() {
         // Créer un grand rectangle noir qui couvre toute la map
         const darkness = this.add.graphics();
-        darkness.fillStyle(0x000000, 0.95);
+        darkness.fillStyle(0x000000, 0.99);
         darkness.fillRect(-2000, -2000, 4000, 4000);
         darkness.setDepth(1000); // Au-dessus de tout
 
@@ -252,12 +258,16 @@ export class Game extends Scene
             this.lightCircle.clear();
             this.lightCircle.fillStyle(0xffffff);
             
-            // Créer un effet de dégradé avec plusieurs cercles
+            // Le rayon dépend maintenant de la valeur du timer
             const baseRadius = 150;
-            const alpha = 0.2;
-            this.lightCircle.fillStyle(0xffffff, alpha);
-            const radius = baseRadius;
+            const radius = baseRadius * (this.timerValue / 100); // Le rayon diminue avec le timer
+            
+            // Dessiner un cercle plein avec une opacité faible
+            this.lightCircle.fillStyle(0xffffff, 0.3);
             this.lightCircle.fillCircle(0, 0, radius);
+
+            this.lightCircle.lineStyle(40, 0x000, 0.01);
+            this.lightCircle.strokeCircle(0, 0, radius + 20);
         }
 
         // Traitement du son du microphone
