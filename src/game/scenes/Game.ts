@@ -20,6 +20,12 @@ export class Game extends Scene
     private soundBarBg: Phaser.GameObjects.Graphics;
     private debugText: Phaser.GameObjects.Text;
 
+    // Système d'ombre
+    private shadowLayer: Phaser.GameObjects.RenderTexture;
+    private spotlight: Phaser.GameObjects.Light;
+    private mask: Phaser.Display.Masks.GeometryMask;
+    private lightCircle: Phaser.GameObjects.Graphics;
+
     constructor ()
     {
         super('Game');
@@ -168,6 +174,9 @@ export class Game extends Scene
             if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
                 this.physics.add.collider(this.player, worldLayerInfo.tilemapLayer);
             }
+
+            // Création du système d'ombre
+            this.createShadowSystem();
         }
 
         // Création des contrôles
@@ -182,11 +191,29 @@ export class Game extends Scene
         EventBus.emit('current-scene-ready', this);
     }
 
+    private createShadowSystem() {
+        // Créer un grand rectangle noir qui couvre toute la map
+        const darkness = this.add.graphics();
+        darkness.fillStyle(0x000000, 0.95);
+        darkness.fillRect(-2000, -2000, 4000, 4000);
+        darkness.setDepth(1000); // Au-dessus de tout
+
+        // Créer le masque qui révélera la zone autour du joueur
+        this.lightCircle = this.add.graphics();
+        this.lightCircle.clear();
+        
+        // Dessiner le cercle de vision
+        this.lightCircle.fillStyle(0xffffff);
+        this.lightCircle.fillCircle(0, 0, 150);
+        
+        // Créer le masque et l'appliquer au rectangle noir
+        this.mask = new Phaser.Display.Masks.GeometryMask(this, this.lightCircle);
+        this.mask.invertAlpha = true; // Important: inverse le masque pour voir à travers le cercle
+        darkness.setMask(this.mask);
+    }
+
     update()
     {
-        // Traitement du son du microphone
-        this.processMicrophoneInput();
-
         // Gestion des déplacements du joueur
         const speed = 175;
 
@@ -216,6 +243,25 @@ export class Game extends Scene
         if (this.player.body) {
             this.player.body.velocity.normalize().scale(speed);
         }
+
+        // Mettre à jour la position de la zone de vision
+        if (this.lightCircle && this.player) {
+            this.lightCircle.setPosition(this.player.x, this.player.y);
+            
+            // Effet de "respiration" de la zone de vision
+            this.lightCircle.clear();
+            this.lightCircle.fillStyle(0xffffff);
+            
+            // Créer un effet de dégradé avec plusieurs cercles
+            const baseRadius = 150;
+            const alpha = 0.2;
+            this.lightCircle.fillStyle(0xffffff, alpha);
+            const radius = baseRadius;
+            this.lightCircle.fillCircle(0, 0, radius);
+        }
+
+        // Traitement du son du microphone
+        this.processMicrophoneInput();
     }
 
     changeScene ()
