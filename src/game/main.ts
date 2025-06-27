@@ -24,10 +24,10 @@ const config: Phaser.Types.Core.GameConfig = {
     },
     scene: [
         Preloader,
+        MainGame,
         GameOver,
         Boot,
         MainMenu,
-        MainGame,
         SoundUI,
         TimerUI
     ]

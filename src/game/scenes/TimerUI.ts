@@ -40,7 +40,7 @@ export class TimerUI extends Scene {
             padding: { x: 10, y: 5 }
         });
 
-        // Timer plus rapide (500ms au lieu de 1000ms)
+        // Timer plus rapide (50ms au lieu de 1000ms)
         this.timer = this.time.addEvent({
             delay: 50,
             callback: this.decrementTimer,
@@ -51,6 +51,19 @@ export class TimerUI extends Scene {
         // Écouter les événements
         EventBus.on('reset-timer', this.resetTimer, this);
         EventBus.on('increase-timer', this.increaseTimer, this);
+        EventBus.on('enemy-near', () => {
+            // Augmenter temporairement le taux de diminution quand l'ennemi est proche
+            this.decreaseAmount = 1.5; // Triple la vitesse de diminution
+            
+            // Effet visuel sur la barre
+            this.updateTimerBar(0xff0000); // Rouge quand l'ennemi est proche
+            
+            // Remettre le taux normal après un court délai
+            this.time.delayedCall(100, () => {
+                this.decreaseAmount = 0.5;
+                this.updateTimerBar(); // Retour à la couleur normale
+            });
+        }, this);
     }
 
     private increaseTimer(amount: number) {
@@ -97,10 +110,10 @@ export class TimerUI extends Scene {
         }
     }
 
-    private updateTimerBar() {
+    private updateTimerBar(color?: number) {
         // Mettre à jour la barre graphique
         this.timerBar.clear();
-        this.timerBar.fillStyle(this.getTimerColor(), 1);
+        this.timerBar.fillStyle(color || this.getTimerColor(), 1);
         const barWidth = (this.timerValue / 100) * 200;
         this.timerBar.fillRect(20, 150, barWidth, 30);
 

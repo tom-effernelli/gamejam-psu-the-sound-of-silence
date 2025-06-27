@@ -6,6 +6,7 @@ export class Game extends Scene
     private camera: Phaser.Cameras.Scene2D.Camera;
     private map: Phaser.Tilemaps.Tilemap;
     private player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+    private enemy: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
     
     // Propriétés pour le microphone
@@ -130,6 +131,9 @@ export class Game extends Scene
         
         // Chargement du sprite du joueur (un carré rouge pour l'instant)
         this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
+        
+        // Chargement du sprite de l'ennemi (un carré bleu)
+        this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
     }
 
     async create() {
@@ -170,10 +174,18 @@ export class Game extends Scene
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
             this.player.setCollideWorldBounds(true);
 
+            // Création de l'ennemi
+            this.enemy = this.physics.add.sprite(spawnX + 100, spawnY + 100, 'enemy');
+            this.enemy.setCollideWorldBounds(true);
+            this.enemy.setTint(0x0000ff); // Teinte bleue pour l'ennemi
+
             // Collision entre le joueur et le layer World
             const worldLayerInfo = this.map.getLayer('World');
             if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
                 this.physics.add.collider(this.player, worldLayerInfo.tilemapLayer);
+                this.physics.add.collider(this.enemy, worldLayerInfo.tilemapLayer);
+                // Collision entre le joueur et l'ennemi
+                this.physics.add.collider(this.player, this.enemy);
             }
 
             // Création du système d'ombre
@@ -222,8 +234,10 @@ export class Game extends Scene
     {
         // Gestion des déplacements du joueur
         const speed = 175;
+        const enemySpeed = 100; // Vitesse de l'ennemi (plus lente que le joueur)
+        const mentalDamageDistance = 150; // Distance à laquelle l'ennemi affecte la santé mentale
 
-        if (!this.cursors || !this.player) {
+        if (!this.cursors || !this.player || !this.enemy) {
             return;
         }
 
@@ -248,6 +262,37 @@ export class Game extends Scene
         // Normaliser la vitesse en diagonale
         if (this.player.body) {
             this.player.body.velocity.normalize().scale(speed);
+        }
+
+        // Faire suivre l'ennemi vers le joueur
+        const angle = Phaser.Math.Angle.Between(
+            this.enemy.x,
+            this.enemy.y,
+            this.player.x,
+            this.player.y
+        );
+
+        // Calculer la vélocité de l'ennemi
+        this.enemy.setVelocityX(Math.cos(angle) * enemySpeed);
+        this.enemy.setVelocityY(Math.sin(angle) * enemySpeed);
+
+        // Vérifier la distance entre le joueur et l'ennemi
+        const distance = Phaser.Math.Distance.Between(
+            this.enemy.x,
+            this.enemy.y,
+            this.player.x,
+            this.player.y
+        );
+
+        // Si l'ennemi est proche, accélérer la perte de santé mentale
+        if (distance < mentalDamageDistance) {
+            // Émettre un événement pour accélérer la diminution du timer
+            EventBus.emit('enemy-near');
+            
+            // Effet visuel sur l'ennemi pour montrer qu'il affecte le joueur
+            this.enemy.setTint(0xff0000);
+        } else {
+            this.enemy.clearTint();
         }
 
         // Mettre à jour la position de la zone de vision
