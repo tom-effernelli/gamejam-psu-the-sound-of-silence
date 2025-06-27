@@ -6,6 +6,8 @@ export class SoundUI extends Scene {
     private soundBarBg: Phaser.GameObjects.Graphics;
     private debugText: Phaser.GameObjects.Text;
     private statusText: Phaser.GameObjects.Text;
+    private readonly SOUND_THRESHOLD = 100; // Seuil à partir duquel on considère le son comme "fort"
+    private lastIncreaseTime = 0; // Pour éviter d'augmenter trop souvent
 
     constructor() {
         super({ key: 'SoundUI', active: true });
@@ -54,6 +56,21 @@ export class SoundUI extends Scene {
 
         // Mettre à jour le texte de debug
         this.debugText.setText(`Sound level: ${Math.round(level)}`);
+
+        // Si le son est fort et qu'on n'a pas augmenté récemment
+        const currentTime = this.time.now;
+        if (level > this.SOUND_THRESHOLD && currentTime - this.lastIncreaseTime > 250) {
+            // Augmentation plus importante
+            const increase = Math.floor((level - this.SOUND_THRESHOLD) / 2);
+            if (increase > 0) {
+                EventBus.emit('increase-timer', increase);
+                this.lastIncreaseTime = currentTime;
+                
+                // Effet visuel plus visible (orange vif)
+                this.soundBar.fillStyle(0xff7700, 1);
+                this.soundBar.fillRect(20, 20, barWidth, 30);
+            }
+        }
     }
 
     private updateMicStatus(status: string, color: string = '#ffff00') {
