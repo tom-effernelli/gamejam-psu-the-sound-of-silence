@@ -241,28 +241,37 @@ export class Game extends Scene
             console.log('Adding tileset...');
             const tileset = this.map.addTilesetImage('DungeonBasic', 'tiles');
             if (!tileset) {
-                throw new Error('Failed to add tileset. Make sure the tileset is embedded in the map file (use "Embed Tilesets" when exporting from Tiled)');
+                throw new Error('Failed to add tileset');
             }
             console.log('Tileset added:', tileset);
             
             // Création des layers
-            const groundLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
-            const worldLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
+            const worldLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
+            const decorLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
 
             // Activer les collisions sur le layer World
-            if (worldLayer) {
+            if (worldLayer && decorLayer) {
                 worldLayer.setCollisionByProperty({ collision: true });
-                console.log('Collisions activated for worldLayer');
+                decorLayer.setCollisionByProperty({ collision: true });
+                console.log('Collisions activated for both layers');
                 
-                // Debug: afficher les collisions
-                const debugGraphics = this.add.graphics().setAlpha(0.75);
+                // Debug: afficher les collisions pour worldLayer
+/*                const debugGraphics = this.add.graphics().setAlpha(0.75);
                 worldLayer.renderDebug(debugGraphics, {
-                    tileColor: null, // Couleur des tiles sans collision
-                    collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Couleur des tiles avec collision
-                    faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Couleur des faces des tiles
+                    tileColor: null,
+                    collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Orange vif
+                    faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Couleur des faces
                 });
+
+                // Debug: afficher les collisions pour decorLayer avec une couleur différente
+                const debugGraphics2 = this.add.graphics().setAlpha(0.75);
+                decorLayer.renderDebug(debugGraphics2, {
+                    tileColor: null,
+                    collidingTileColor: new Phaser.Display.Color(255, 0, 0, 255), // Rouge vif pour distinguer
+                    faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Couleur des faces
+                });*/
             } else {
-                console.error('Failed to create worldLayer');
+                console.error('Failed to create layers');
             }
 
             // Création du joueur
@@ -274,9 +283,10 @@ export class Game extends Scene
             this.player.setCollideWorldBounds(true);
 
             // Ajouter les collisions entre le joueur et le monde
-            if (worldLayer) {
+            if (worldLayer && decorLayer) {
                 this.physics.add.collider(this.player, worldLayer);
-                console.log('Player collisions added with worldLayer');
+                this.physics.add.collider(this.player, decorLayer);
+                console.log('Player collisions added with both layers');
             }
 
             // Création de l'ennemi avec la nouvelle fonction
