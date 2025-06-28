@@ -9,10 +9,21 @@ export class MainMenu extends Scene
     title: GameObjects.Text;
     playButton: GameObjects.Text;
     logoTween: Phaser.Tweens.Tween | null;
-
+    startSound: Phaser.Sound.BaseSound;
+    torch: GameObjects.Sprite;
+    torch2: GameObjects.Sprite;
     constructor ()
     {
         super('MainMenu');
+    }
+
+    preload ()
+    {
+        this.load.audio('start-sound', 'assets/SD/UI/StartGame/SartButton.wav');
+        this.load.spritesheet('torch', 'assets/Torch.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
     }
 
     create ()
@@ -29,22 +40,42 @@ export class MainMenu extends Scene
         this.background.setScale(scale).setScrollFactor(0);
 
         this.logo = this.add.image(centerX, centerY - 100, 'logo').setDepth(100);
+        this.logo.setScale(1.5);
 
-        this.title = this.add.text(centerX, centerY + 60, 'Main Menu', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5).setDepth(100);
+        // Création de l'animation de la torche
+        this.anims.create({
+            key: 'torch_burn',
+            frames: this.anims.generateFrameNumbers('torch', { start: 0, end: 7 }),
+            frameRate: 9,
+            repeat: -1
+        });
 
-        this.playButton = this.add.text(centerX, centerY + 160, 'Play', {
-            fontFamily: 'Arial Black', fontSize: 32, color: '#ffffff',
+        // Ajout de la torche
+        this.torch = this.add.sprite(centerX- 600, centerY, 'torch');
+        this.torch.setScale(10);
+        this.torch.play('torch_burn');
+
+        this.torch2 = this.add.sprite(centerX+ 600, centerY, 'torch');
+        this.torch2.setScale(10);
+        this.torch2.play('torch_burn');
+
+        this.startSound = this.sound.add('start-sound', {
+            volume: 0.1,
+            loop: false
+        });
+
+        this.playButton = this.add.text(centerX, centerY+50, 'Start the Adventure', {
+            fontFamily: 'Arial Black', fontSize: 40, color: '#ffffff',
             stroke: '#000000', strokeThickness: 6,
             align: 'center'
         }).setOrigin(0.5).setDepth(100)
         .setInteractive({ useHandCursor: true })
         .on('pointerover', () => this.playButton.setScale(1.1))
         .on('pointerout', () => this.playButton.setScale(1))
-        .on('pointerdown', () => this.changeScene());
+        .on('pointerdown', () => {
+            this.startSound.play();
+            this.changeScene();
+        });
 
         EventBus.emit('current-scene-ready', this);
     }

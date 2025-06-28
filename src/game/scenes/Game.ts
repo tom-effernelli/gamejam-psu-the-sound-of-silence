@@ -11,6 +11,8 @@ export class Game extends Scene
     private enemies: Enemy[] = [];
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null;
     private currentSoundLevel: number = 0;
+    private lastStepFrame: number = 0;
+    private stepFrameInterval: number = 15; // Nombre de frames entre chaque son de pas
     private key: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     private hasKey: boolean = false;
     
@@ -470,9 +472,11 @@ export class Game extends Scene
         if (this.cursors.left.isDown) {
             this.player.setVelocityX(-speed);
             this.player.anims.play('walk_left', true);
+            this.playFootstepSound();
         } else if (this.cursors.right.isDown) {
             this.player.setVelocityX(speed);
             this.player.anims.play('walk_right', true);
+            this.playFootstepSound();
         } else {
             this.player.setVelocityX(0);
         }
@@ -480,8 +484,10 @@ export class Game extends Scene
         // Déplacement vertical
         if (this.cursors.up.isDown) {
             this.player.setVelocityY(-speed);
+            this.playFootstepSound();
         } else if (this.cursors.down.isDown) {
             this.player.setVelocityY(speed);
+            this.playFootstepSound();
         } else {
             this.player.setVelocityY(0);
         }
@@ -531,6 +537,17 @@ export class Game extends Scene
 
         // Traitement du son du microphone
         this.processMicrophoneInput();
+    }
+
+    private playFootstepSound() {
+        // Vérifier si assez de frames sont passées depuis le dernier son
+        if (this.game.getFrame() - this.lastStepFrame >= this.stepFrameInterval) {
+            const musicScene = this.scene.get('Music') as Music;
+            if (musicScene && musicScene.isSceneReady()) {
+                musicScene.playRandomFootstepSound();
+                this.lastStepFrame = this.game.getFrame();
+            }
+        }
     }
 
     changeScene ()

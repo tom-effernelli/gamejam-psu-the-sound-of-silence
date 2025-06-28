@@ -5,6 +5,7 @@ export class Music extends Scene {
     private keyCollectSound!: Phaser.Sound.BaseSound;
     private doorLockedSound!: Phaser.Sound.BaseSound;
     private doorOpenSound!: Phaser.Sound.BaseSound;
+    private footstepSounds: Phaser.Sound.BaseSound[] = [];
     private isReady: boolean = false;
 
     constructor() {
@@ -16,6 +17,11 @@ export class Music extends Scene {
         this.load.audio('key-collect', 'assets/SD/Player/CollectKey/CollectKey.wav');
         this.load.audio('door-locked', 'assets/SD/Player/OpenDoor/OpenWithoutKey.wav');
         this.load.audio('door-open', 'assets/SD/Player/OpenDoor/OpenDoor.wav');
+        
+        // Charger les sons de pas
+        for (let i = 1; i <= 6; i++) {
+            this.load.audio(`footstep-${i}`, `assets/SD/Player/Walk/RandomStepSounds/SFX_StepMC${i}.mp3`);
+        }
     }
 
     create() {
@@ -40,6 +46,15 @@ export class Music extends Scene {
             loop: false,
             volume: 0.3
         });
+
+        // Ajouter les sons de pas
+        for (let i = 1; i <= 6; i++) {
+            const footstepSound = this.sound.add(`footstep-${i}`, {
+                loop: false,
+                volume: 0.2
+            });
+            this.footstepSounds.push(footstepSound);
+        }
 
         // Empêcher la musique de s'arrêter quand on change d'onglet
         document.addEventListener('visibilitychange', () => {
@@ -80,6 +95,15 @@ export class Music extends Scene {
         }
         console.log('Playing door open sound...');
         this.doorOpenSound.play();
+    }
+
+    playRandomFootstepSound() {
+        if (!this.isReady || this.footstepSounds.length === 0) {
+            console.warn('Footstep sounds not ready');
+            return;
+        }
+        const randomIndex = Math.floor(Math.random() * this.footstepSounds.length);
+        this.footstepSounds[randomIndex].play();
     }
 
     isSceneReady(): boolean {
