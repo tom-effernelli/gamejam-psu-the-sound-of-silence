@@ -12,7 +12,7 @@ export class Game extends Scene
     private map: Phaser.Tilemaps.Tilemap;
     private player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     private enemy: CustomEnemy;
-    private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+    private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null;
     private currentSoundLevel: number = 0;
     private key: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     
@@ -311,7 +311,12 @@ export class Game extends Scene
             this.createShadowSystem();
 
             // Création des contrôles
-            this.cursors = this.input.keyboard.createCursorKeys();
+            if (this.input.keyboard) {
+                this.cursors = this.input.keyboard.createCursorKeys();
+            } else {
+                console.error('Keyboard input not available');
+                this.cursors = null;
+            }
 
             // La caméra suit le joueur
             if (this.player && this.camera) {
@@ -359,7 +364,7 @@ export class Game extends Scene
         const enemySpeed = 100; // Vitesse de l'ennemi (plus lente que le joueur)
         const mentalDamageDistance = 150; // Distance à laquelle l'ennemi affecte la santé mentale
 
-        if (!this.cursors || !this.player || !this.enemy) {
+        if (!this.cursors || !this.player || !this.enemy || !this.input.keyboard) {
             return;
         }
 
