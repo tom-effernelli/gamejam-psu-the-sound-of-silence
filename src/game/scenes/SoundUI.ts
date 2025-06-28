@@ -74,6 +74,11 @@ export class SoundUI extends Scene {
     }
 
     private updateSoundLevel(level: number) {
+        // Vérifier si la scène est active et si les éléments existent
+        if (!this.scene.isActive() || !this.soundBar || !this.debugText) {
+            return;
+        }
+
         // Mettre à jour la barre de son (même si invisible)
         this.soundBar.clear();
         this.soundBar.fillStyle(0x00ff00, 1);
@@ -82,8 +87,10 @@ export class SoundUI extends Scene {
         this.soundBar.visible = false;
 
         // Mettre à jour le texte de debug
-        this.debugText.setText(`Sound level: ${Math.round(level)}`);
-        this.debugText.visible = false;
+        if (this.debugText && this.debugText.scene) {
+            this.debugText.setText(`Sound level: ${Math.round(level)}`);
+            this.debugText.visible = false;
+        }
 
         // Si le son est fort et qu'on n'a pas augmenté récemment
         const currentTime = this.time.now;
@@ -95,9 +102,11 @@ export class SoundUI extends Scene {
                 this.lastIncreaseTime = currentTime;
                 
                 // Effet visuel (même si invisible)
-                this.soundBar.fillStyle(0xff7700, 1);
-                this.soundBar.fillRect(20, 20, barWidth, 30);
-                this.soundBar.visible = false;
+                if (this.soundBar && this.soundBar.scene) {
+                    this.soundBar.fillStyle(0xff7700, 1);
+                    this.soundBar.fillRect(20, 20, barWidth, 30);
+                    this.soundBar.visible = false;
+                }
             }
         } else if (level > 30) { // Ajout d'une détection pour les sons plus faibles
             // Petite augmentation pour les sons modérés
@@ -110,5 +119,11 @@ export class SoundUI extends Scene {
         this.statusText.setText(`Microphone Status: ${status}`);
         this.statusText.setStyle({ color });
         this.statusText.visible = false; // Maintenir invisible après la mise à jour
+    }
+
+    shutdown() {
+        // Nettoyage des événements lors de l'arrêt de la scène
+        EventBus.off('sound-level', this.updateSoundLevel, this);
+        EventBus.off('mic-status', this.updateMicStatus, this);
     }
 } 
