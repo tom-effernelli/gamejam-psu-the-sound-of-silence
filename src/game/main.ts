@@ -8,6 +8,8 @@ import { AUTO, Game } from 'phaser';
 import { Preloader } from './scenes/Preloader';
 import { SoundUI } from './scenes/SoundUI';
 import { TimerUI } from './scenes/TimerUI';
+import { SoundSettings } from './scenes/SoundSettings';
+import { Music } from './scenes/Music';
 
 //  Find out more information about the Game Config at:
 //  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
@@ -20,6 +22,10 @@ const config: Phaser.Types.Core.GameConfig = {
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    audio: {
+        disableWebAudio: false,
+        noAudio: false
     },
     physics: {
         default: 'arcade',
@@ -37,7 +43,9 @@ const config: Phaser.Types.Core.GameConfig = {
         GameOver,
         Boot,
         SoundUI,
-        TimerUI
+        TimerUI,
+        SoundSettings,
+        Music
     ]
 };
 

@@ -56,7 +56,7 @@ export class Enemy {
     }
 
     public update() {
-        const enemySpeed = 100; // Vitesse de base de l'ennemi
+        const enemySpeed = 70; // Vitesse de base de l'ennemi
 
         // Calculer l'angle vers la cible
         const angle = Phaser.Math.Angle.Between(
@@ -72,7 +72,7 @@ export class Enemy {
             const SOUND_MOVEMENT_THRESHOLD = 60;
             if (this.currentSoundLevel > SOUND_MOVEMENT_THRESHOLD) {
                 // Plus le son est fort, plus l'ennemi est rapide
-                const speedMultiplier = Math.min(this.currentSoundLevel / 50, 2);
+                const speedMultiplier = Math.min(this.currentSoundLevel / 50, 1.5);
                 const velocityX = Math.cos(angle) * enemySpeed * speedMultiplier;
                 const velocityY = Math.sin(angle) * enemySpeed * speedMultiplier;
                 

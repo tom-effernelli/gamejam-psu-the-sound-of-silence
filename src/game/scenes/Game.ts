@@ -1,6 +1,7 @@
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
 import { Enemy } from '../entities/Enemy';
+import { Music } from './Music';
 
 export class Game extends Scene
 {
@@ -165,6 +166,10 @@ export class Game extends Scene
         // Émet un événement pour indiquer que la clé a été collectée
         EventBus.emit('key-collected');
         
+        // Jouer le son de collecte de clé
+        const musicScene = this.scene.get('Music') as Music;
+        musicScene.playKeyCollectSound();
+        
         console.log('Clé collectée !');
     }
 
@@ -181,15 +186,13 @@ export class Game extends Scene
         this.load.image('tiles', 'assets/dungeon.png');
         console.log('Assets loaded in preload');
         
-        // Chargement du sprite du joueur (un carré rouge pour l'instant)
-        //this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
+        // Chargement du sprite du joueur
         this.load.spritesheet('player', 'assets/Character.png', {
             frameWidth: 32,
             frameHeight: 32
         });
 
-        // Chargement du sprite de l'ennemi (un carré bleu)
-        //this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
+        // Chargement du sprite de l'ennemi
         this.load.spritesheet('enemy', 'assets/Monster1.png', {
             frameWidth: 50,
             frameHeight: 50
@@ -198,8 +201,8 @@ export class Game extends Scene
         // Chargement de l'icône d'exclamation
         this.load.image('exclamation', 'assets/exclamation.png');
 
-        // Chargement du sprite de la clé (un carré jaune pour l'instant)
-        //this.load.image('key', 'assets/key.png');
+        // Chargement des sons
+        this.load.audio('door-locked', 'assets/SD/Player/OpenDoor/OpenWithoutKey.wav');
     }
 
     private createEnemy(x: number, y: number, type: number = 1): Enemy {
@@ -439,9 +442,27 @@ export class Game extends Scene
                 doorObject.y
             );
             
-            if (distanceToDoor < 50 && this.hasKey) {
-                this.scene.start('Game2');
-                return;
+            if (distanceToDoor < 50) {
+                if (this.hasKey) {
+                    // Jouer le son de porte qui s'ouvre
+                    const musicScene = this.scene.get('Music') as Music;
+                    if (musicScene && musicScene.isSceneReady()) {
+                        console.log('Playing door open sound...');
+                        musicScene.playDoorOpenSound();
+                    }
+                    EventBus.emit('reset-timer');  // Reset la vie à 100 avant de changer de scène
+                    this.scene.start('Game2');
+                    return;
+                } else {
+                    // Jouer le son de porte verrouillée
+                    const musicScene = this.scene.get('Music') as Music;
+                    if (musicScene && musicScene.isSceneReady()) {
+                        console.log('Playing door locked sound from Game scene...');
+                        musicScene.playDoorLockedSound();
+                    } else {
+                        console.warn('Music scene not ready');
+                    }
+                }
             }
         }
 
@@ -514,6 +535,7 @@ export class Game extends Scene
 
     changeScene ()
     {
+        EventBus.emit('reset-timer');  // Reset la vie à 100
         this.scene.start('GameOver');
     }
 }

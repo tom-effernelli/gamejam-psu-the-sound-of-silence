@@ -1,6 +1,7 @@
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
 import { Enemy } from '../entities/Enemy';
+import { Music } from './Music';
 
 // Interface pour l'ennemi
 interface CustomEnemy extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
@@ -36,7 +37,6 @@ export class Game2 extends Scene
     private mask: Phaser.Display.Masks.GeometryMask;
     private lightCircle: Phaser.GameObjects.Graphics;
     private timerValue: number = 100; // Nouvelle propriété pour stocker la valeur du timer
-
     private doorPositions: Array<{x: number, y: number}> = [];
 
     constructor ()
@@ -168,6 +168,10 @@ export class Game2 extends Scene
         // Émet un événement pour indiquer que la clé a été collectée
         EventBus.emit('key-collected');
         
+        // Jouer le son de collecte de clé
+        const musicScene = this.scene.get('Music') as Music;
+        musicScene.playKeyCollectSound();
+        
         console.log('Clé collectée !');
     }
 
@@ -197,6 +201,9 @@ export class Game2 extends Scene
 
         // Chargement de l'icône d'exclamation
         this.load.image('exclamation', 'assets/exclamation.png');
+
+        // Chargement des sons
+        this.load.audio('door-locked', 'assets/SD/Player/OpenDoor/OpenWithoutKey.wav');
     }
 
     private createEnemy(x: number, y: number, type: number = 1): Enemy {
@@ -207,6 +214,35 @@ export class Game2 extends Scene
         }
         this.enemies.push(enemy);
         return enemy;
+    }
+
+    private cleanup() {
+        // Arrêter tous les sons
+        this.sound.stopAll();
+        
+        // Nettoyer les événements
+        this.events.off('update');
+        this.events.off('destroy');
+        EventBus.emit('reset-timer');
+
+        // Nettoyer les collisions
+        if (this.physics.world) {
+            this.physics.world.colliders.destroy();
+        }
+
+        // Nettoyer les ennemis
+        this.enemies.forEach(enemy => {
+            const sprite = enemy.getSprite();
+            if (sprite) {
+                sprite.destroy();
+            }
+        });
+        this.enemies = [];
+
+        // Nettoyer le joueur
+        if (this.player) {
+            this.player.destroy();
+        }
     }
 
     private createDoorSprites() {
@@ -220,25 +256,9 @@ export class Game2 extends Scene
                     const doorSprite = this.add.rectangle(door.x, door.y, 32, 32, 0x000000);
                     doorSprite.setOrigin(0, 0); // Définir l'origine en haut à gauche
                     doorSprite.setDepth(1); // S'assurer que le sprite est au-dessus du sol mais en-dessous de l'ombre
-
-                    // Stocker la position de la porte pour plus tard
-                    this.doorPositions.push({x: door.x, y: door.y});
                 }
             });
         }
-    }
-
-    private setupDoorCollisions() {
-        // Créer les zones de collision pour chaque porte
-        this.doorPositions.forEach(door => {
-            const doorZone = this.add.rectangle(door.x, door.y, 32, 32);
-            this.physics.add.existing(doorZone, true);
-            
-            // Ajouter la collision avec le joueur
-            this.physics.add.overlap(this.player, doorZone, () => {
-                this.scene.start('Game3');
-            });
-        });
     }
 
     async create() {
@@ -319,9 +339,6 @@ export class Game2 extends Scene
                 console.log('Player collisions added with both layers');
             }
 
-            // Maintenant que le joueur est créé, on peut configurer les collisions des portes
-            this.setupDoorCollisions();
-
             // Création des clés
             const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
             if (keyObjects) {
@@ -371,6 +388,11 @@ export class Game2 extends Scene
                 this.camera.startFollow(this.player, true);
                 this.camera.setZoom(1.5);
             }
+
+            // Écouter les changements de valeur du timer
+            EventBus.on('timer-update', (value: number) => {
+                this.timerValue = value;
+            });
 
             // Écouter les changements de valeur du timer
             EventBus.on('timer-update', (value: number) => {
@@ -443,11 +465,36 @@ export class Game2 extends Scene
 
     update()
     {
+        // Vérifier si le joueur est près de la porte
+        if (!this.player || !this.player.body) {
+            return;
+        }
+
+        if (this.map) {  // Vérifier que la carte est chargée
+            const doorObject = this.map.findObject("Calque d'Objets 1", obj => obj.name === "Door");
+            if (doorObject && doorObject.x !== undefined && doorObject.y !== undefined) {
+                const distanceToDoor = Phaser.Math.Distance.Between(
+                    this.player.x,
+                    this.player.y,
+                    doorObject.x,
+                    doorObject.y
+                );
+                
+                if (distanceToDoor < 50) {
+                    // Nettoyer la scène avant la transition
+                    this.cleanup();
+                    // Démarrer Game3
+                    this.scene.start('Game3');
+                    return;
+                }
+            }
+        }
+
         // Gestion des déplacements du joueur
         const speed = 175;
         const mentalDamageDistance = 150;
 
-        if (!this.cursors || !this.player || !this.input.keyboard) {
+        if (!this.cursors || !this.input.keyboard) {
             return;
         }
 
@@ -486,6 +533,11 @@ export class Game2 extends Scene
         // Mise à jour des ennemis
         let isEnemyNear = false;
         for (const enemy of this.enemies) {
+            const sprite = enemy.getSprite();
+            if (!sprite || !sprite.body) {
+                continue;  // Skip this enemy if sprite is not valid
+            }
+            
             enemy.setCurrentSoundLevel(this.currentSoundLevel);
             enemy.update();
             
@@ -497,11 +549,13 @@ export class Game2 extends Scene
         }
 
         // Mise à jour de l'exclamation
-        if (isEnemyNear) {
-            this.exclamationSprite.setVisible(true);
-            this.exclamationSprite.setPosition(this.player.x, this.player.y - 50);
-        } else {
-            this.exclamationSprite.setVisible(false);
+        if (this.exclamationSprite) {
+            if (isEnemyNear) {
+                this.exclamationSprite.setVisible(true);
+                this.exclamationSprite.setPosition(this.player.x, this.player.y - 50);
+            } else {
+                this.exclamationSprite.setVisible(false);
+            }
         }
 
         // Mettre à jour la position de la zone de vision
@@ -530,6 +584,7 @@ export class Game2 extends Scene
 
     changeScene ()
     {
+        EventBus.emit('reset-timer');  // Reset la vie à 100
         this.scene.start('GameOver');
     }
 } 
