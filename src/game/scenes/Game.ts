@@ -181,8 +181,12 @@ export class Game extends Scene
         console.log('Assets loaded in preload');
         
         // Chargement du sprite du joueur (un carré rouge pour l'instant)
-        this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
-        
+        //this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
+        this.load.spritesheet('player', 'assets/Character.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
         // Chargement du sprite de l'ennemi (un carré bleu)
         this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
 
@@ -280,7 +284,43 @@ export class Game extends Scene
             const spawnY = spawnPoint ? (spawnPoint.y || 500) : 500;
             
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
+            this.player.setScale(1.50);
             this.player.setCollideWorldBounds(true);
+
+            // Création des animations du joueur
+            this.anims.create({
+                key: 'walk_down',
+                frames: this.anims.generateFrameNumbers('player', { start: 0, end: 1 }),
+                frameRate: 8,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'walk_left',
+                frames: this.anims.generateFrameNumbers('player', { start: 2, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'walk_right',
+                frames: this.anims.generateFrameNumbers('player', { start: 4, end: 5 }),
+                frameRate: 8,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'walk_up',
+                frames: this.anims.generateFrameNumbers('player', { start: 6, end: 7 }),
+                frameRate: 8,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'idle',
+                frames: [{ key: 'player', frame: 0 }],
+                frameRate: 1
+            });
 
             // Ajouter les collisions entre le joueur et le monde
             if (worldLayer && decorLayer) {
@@ -381,8 +421,10 @@ export class Game extends Scene
         // Déplacement horizontal
         if (this.cursors.left.isDown) {
             this.player.setVelocityX(-speed);
+            this.player.anims.play('walk_left', true);
         } else if (this.cursors.right.isDown) {
             this.player.setVelocityX(speed);
+            this.player.anims.play('walk_right', true);
         } else {
             this.player.setVelocityX(0);
         }
@@ -390,10 +432,17 @@ export class Game extends Scene
         // Déplacement vertical
         if (this.cursors.up.isDown) {
             this.player.setVelocityY(-speed);
+            this.player.anims.play('walk_up', true);
         } else if (this.cursors.down.isDown) {
             this.player.setVelocityY(speed);
+            this.player.anims.play('walk_down', true);
         } else {
             this.player.setVelocityY(0);
+        }
+
+        // Si le joueur ne bouge pas, jouer l'animation idle
+        if (this.player.body.velocity.x === 0 && this.player.body.velocity.y === 0) {
+            this.player.anims.play('idle', true);
         }
 
         // Normaliser la vitesse en diagonale
