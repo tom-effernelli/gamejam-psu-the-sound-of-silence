@@ -14,6 +14,7 @@ export class Game extends Scene
     private enemy: CustomEnemy;
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
     private currentSoundLevel: number = 0;
+    private key: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     
     // Propriétés pour le microphone
     private audioContext: AudioContext;
@@ -129,17 +130,64 @@ export class Game extends Scene
         }
     }
 
+    private createKey(x: number, y: number): Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
+        console.log('createKey called with:', x, y);
+        // Création de la clé
+        const key = this.physics.add.sprite(x, y, 'key');
+        console.log('Key sprite created:', key);
+        
+        // Redimensionnement de la clé
+        key.setScale(0.15); // Réduire à 10% de sa taille originale
+        
+        // Ajout des collisions avec le monde
+        const worldLayerInfo = this.map.getLayer('World');
+        if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
+            this.physics.add.collider(key, worldLayerInfo.tilemapLayer);
+        }
+    
+        // Ajout de la collision avec le joueur APRÈS l'initialisation complète
+        if (this.player) {
+            // Ajout d'un délai pour éviter la collection immédiate
+            this.time.delayedCall(100, () => {
+                this.physics.add.overlap(this.player, key, this.collectKey, undefined, this);
+            });
+        }
+        
+        return key;
+    }
+
+    private collectKey: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_obj1, obj2) => {
+        // Désactive et cache la clé
+        const keySprite = obj2 as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+        keySprite.disableBody(true, true);
+        
+        // Émet un événement pour indiquer que la clé a été collectée
+        EventBus.emit('key-collected');
+        
+        console.log('Clé collectée !');
+    }
+
     preload ()
     {
+        this.load.on('loaderror', (file: { key: string; url: string }) => {
+            console.error('Error loading file:', file.key, file.url);
+        });
+
         // Chargement de la tilemap et du tileset
-        this.load.tilemapTiledJSON('map', 'assets/tuxemon-town.json');
-        this.load.image('tiles', 'assets/tuxmon-sample-32px-extruded.png');
+        console.log('Loading tilemap...');
+        this.load.tilemapTiledJSON('map', 'assets/Niveau1.tmj');
+        console.log('Loading tileset...');
+        this.load.image('tiles', 'assets/dungeon.png');
+        console.log('Assets loaded in preload');
         
         // Chargement du sprite du joueur (un carré rouge pour l'instant)
         this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
         
         // Chargement du sprite de l'ennemi (un carré bleu)
         this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
+
+        // Chargement du sprite de la clé (un carré jaune pour l'instant)
+        //this.load.image('key', 'assets/key.png');
     }
 
     private createEnemy(x: number, y: number, type: number = 1): CustomEnemy {
@@ -157,7 +205,7 @@ export class Game extends Scene
         }
 
         // Ajouter les collisions avec le monde
-        const worldLayerInfo = this.map.getLayer('World');
+        const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
         if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
             this.physics.add.collider(enemy, worldLayerInfo.tilemapLayer);
             this.physics.add.collider(this.player, enemy);
@@ -167,6 +215,7 @@ export class Game extends Scene
     }
 
     async create() {
+        console.log('Starting create function...');
         // Active la physique Arcade
         this.physics.world.setBounds(0, 0, 1280, 1280);
 
@@ -180,16 +229,25 @@ export class Game extends Scene
         await this.initMicrophone();
         
         // Création de la tilemap
-        this.map = this.make.tilemap({ key: 'map' });
-        
-        // Ajout du tileset à la map
-        const tileset = this.map.addTilesetImage('tuxmon-sample-32px-extruded', 'tiles');
-        
-        // Création des layers
-        if (tileset) {
-            this.map.createLayer('Below Player', tileset, 0, 0);
-            const worldLayer = this.map.createLayer('World', tileset, 0, 0);
-            this.map.createLayer('Above Player', tileset, 0, 0);
+        console.log('Creating tilemap...');
+        try {
+            this.map = this.make.tilemap({ key: 'map' });
+            if (!this.map) {
+                throw new Error('Failed to create tilemap');
+            }
+            console.log('Tilemap created:', this.map);
+            
+            // Ajout du tileset à la map
+            console.log('Adding tileset...');
+            const tileset = this.map.addTilesetImage('DungeonBasic', 'tiles');
+            if (!tileset) {
+                throw new Error('Failed to add tileset. Make sure the tileset is embedded in the map file (use "Embed Tilesets" when exporting from Tiled)');
+            }
+            console.log('Tileset added:', tileset);
+            
+            // Création des layers
+            this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
+            const worldLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
 
             // Activer les collisions sur le layer World
             if (worldLayer) {
@@ -197,21 +255,41 @@ export class Game extends Scene
             }
 
             // Création du joueur
-            const spawnPoint = this.map.findObject("Objects", obj => obj.name === "Spawn Point");
-            const spawnX = spawnPoint ? (spawnPoint.x || 400) : 400;
-            const spawnY = spawnPoint ? (spawnPoint.y || 400) : 400;
+            const spawnPoint = this.map.findObject("Calque d'Objets 1", obj => obj.name === "Player");
+            const spawnX = spawnPoint ? (spawnPoint.x || 350) : 350;
+            const spawnY = spawnPoint ? (spawnPoint.y || 500) : 500;
             
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
             this.player.setCollideWorldBounds(true);
 
             // Ajouter les collisions entre le joueur et le monde
-            const worldLayerInfo = this.map.getLayer('World');
-            if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
+            const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
+            if (worldLayerInfo?.tilemapLayer) {
                 this.physics.add.collider(this.player, worldLayerInfo.tilemapLayer);
             }
 
             // Création de l'ennemi avec la nouvelle fonction
             this.enemy = this.createEnemy(spawnX + 100, spawnY - 200, 1);
+
+            // Création des clés depuis le Calque d'Objets 1
+            const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
+            if (keyObjects) {
+                keyObjects.forEach(keyObj => {
+                    if (keyObj.x !== undefined && keyObj.y !== undefined) {
+                        this.createKey(keyObj.x, keyObj.y);
+                    }
+                });
+            }
+
+            // Création des monstres depuis le Calque d'Objets 2
+            const monsterObjects = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterHF");
+            if (monsterObjects) {
+                monsterObjects.forEach(monsterObj => {
+                    if (monsterObj.x !== undefined && monsterObj.y !== undefined) {
+                        this.createEnemy(monsterObj.x, monsterObj.y, 1);
+                    }
+                });
+            }
 
             // Écouter les événements de son
             EventBus.on('sound-level', (level: number) => {
@@ -220,23 +298,26 @@ export class Game extends Scene
 
             // Création du système d'ombre
             this.createShadowSystem();
+
+            // Création des contrôles
+            this.cursors = this.input.keyboard.createCursorKeys();
+
+            // La caméra suit le joueur
+            if (this.player && this.camera) {
+                this.camera.startFollow(this.player, true);
+                this.camera.setZoom(1.5);
+            }
+
+            // Écouter les changements de valeur du timer
+            EventBus.on('timer-update', (value: number) => {
+                this.timerValue = value;
+            });
+
+            EventBus.emit('current-scene-ready', this);
+        } catch (error) {
+            console.error('Error creating map:', error);
+            return;
         }
-
-        // Création des contrôles
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // La caméra suit le joueur
-        if (this.player && this.camera) {
-            this.camera.startFollow(this.player, true);
-            this.camera.setZoom(1.5);
-        }
-
-        // Écouter les changements de valeur du timer
-        EventBus.on('timer-update', (value: number) => {
-            this.timerValue = value;
-        });
-
-        EventBus.emit('current-scene-ready', this);
     }
 
     private createShadowSystem() {
