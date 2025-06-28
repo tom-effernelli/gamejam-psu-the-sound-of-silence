@@ -246,12 +246,23 @@ export class Game extends Scene
             console.log('Tileset added:', tileset);
             
             // Création des layers
-            this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
+            const groundLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
             const worldLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
 
             // Activer les collisions sur le layer World
             if (worldLayer) {
-                worldLayer.setCollisionByProperty({ collides: true });
+                worldLayer.setCollisionByProperty({ collision: true });
+                console.log('Collisions activated for worldLayer');
+                
+                // Debug: afficher les collisions
+                const debugGraphics = this.add.graphics().setAlpha(0.75);
+                worldLayer.renderDebug(debugGraphics, {
+                    tileColor: null, // Couleur des tiles sans collision
+                    collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Couleur des tiles avec collision
+                    faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Couleur des faces des tiles
+                });
+            } else {
+                console.error('Failed to create worldLayer');
             }
 
             // Création du joueur
@@ -263,9 +274,9 @@ export class Game extends Scene
             this.player.setCollideWorldBounds(true);
 
             // Ajouter les collisions entre le joueur et le monde
-            const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
-            if (worldLayerInfo?.tilemapLayer) {
-                this.physics.add.collider(this.player, worldLayerInfo.tilemapLayer);
+            if (worldLayer) {
+                this.physics.add.collider(this.player, worldLayer);
+                console.log('Player collisions added with worldLayer');
             }
 
             // Création de l'ennemi avec la nouvelle fonction
