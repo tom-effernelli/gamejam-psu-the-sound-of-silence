@@ -46,28 +46,33 @@ export class TimerUI extends Scene {
         this.timerText.visible = false;
         this.flashEffect.visible = false;
 
-        // Timer plus rapide (50ms au lieu de 1000ms)
+        // Timer plus rapide (50ms au lieu de 1000ms) mais en pause au démarrage
         this.timer = this.time.addEvent({
             delay: 50,
             callback: this.decrementTimer,
             callbackScope: this,
-            loop: true
+            loop: true,
+            paused: true // Le timer commence en pause
         });
 
         // Écouter les événements
         EventBus.on('reset-timer', this.resetTimer, this);
         EventBus.on('increase-timer', this.increaseTimer, this);
+        EventBus.on('start-game', () => {
+            this.resetTimer();
+            this.timer.paused = false; // Démarrer le timer quand le jeu commence
+        }, this);
         EventBus.on('enemy-near', () => {
             // Augmenter temporairement le taux de diminution quand l'ennemi est proche
-            this.decreaseAmount = 1.5; // Triple la vitesse de diminution
+            this.decreaseAmount = 1.5;
             
             // Effet visuel sur la barre
-            this.updateTimerBar(0xff0000); // Rouge quand l'ennemi est proche
+            this.updateTimerBar(0xff0000);
             
             // Remettre le taux normal après un court délai
             this.time.delayedCall(100, () => {
                 this.decreaseAmount = 0.5;
-                this.updateTimerBar(); // Retour à la couleur normale
+                this.updateTimerBar();
             });
         }, this);
     }

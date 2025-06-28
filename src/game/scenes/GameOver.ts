@@ -5,7 +5,8 @@ export class GameOver extends Scene
 {
     camera: Phaser.Cameras.Scene2D.Camera;
     background: Phaser.GameObjects.Image;
-    gameOverText : Phaser.GameObjects.Text;
+    gameOverText: Phaser.GameObjects.Text;
+    restartButton: Phaser.GameObjects.Text;
 
     constructor ()
     {
@@ -25,12 +26,28 @@ export class GameOver extends Scene
             stroke: '#000000', strokeThickness: 8,
             align: 'center'
         }).setOrigin(0.5).setDepth(100);
+
+        // Add restart button
+        this.restartButton = this.add.text(512, 484, 'Recommencer', {
+            fontFamily: 'Arial Black',
+            fontSize: 32,
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6,
+            align: 'center'
+        }).setOrigin(0.5).setDepth(100);
+
+        // Make the button interactive
+        this.restartButton.setInteractive({ useHandCursor: true });
+        this.restartButton.on('pointerover', () => this.restartButton.setScale(1.1));
+        this.restartButton.on('pointerout', () => this.restartButton.setScale(1));
+        this.restartButton.on('pointerdown', () => this.changeScene());
         
         EventBus.emit('current-scene-ready', this);
     }
 
     changeScene ()
     {
-        this.scene.start('MainMenu');
+        window.location.reload();
     }
 }

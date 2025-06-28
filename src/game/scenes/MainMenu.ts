@@ -57,6 +57,7 @@ export class MainMenu extends Scene
             this.logoTween = null;
         }
 
+        EventBus.emit('start-game');
         this.scene.start('Game');
     }
 
