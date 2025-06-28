@@ -1,5 +1,6 @@
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
+import { Enemy } from '../entities/Enemy';
 
 // Interface pour l'ennemi
 interface CustomEnemy extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
@@ -11,10 +12,11 @@ export class Game2 extends Scene
     private camera: Phaser.Cameras.Scene2D.Camera;
     private map: Phaser.Tilemaps.Tilemap;
     private player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-    private enemy: CustomEnemy;
+    private enemies: Enemy[] = [];
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null;
     private currentSoundLevel: number = 0;
     private key: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+    private exclamationSprite: Phaser.GameObjects.Sprite;
     
     // Propriétés pour le microphone
     private audioContext: AudioContext;
@@ -185,31 +187,23 @@ export class Game2 extends Scene
             frameHeight: 32
         });
 
-        this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
+        // Chargement du sprite de l'ennemi
+        this.load.spritesheet('enemy', 'assets/Monster1.png', {
+            frameWidth: 50,
+            frameHeight: 50
+        });
+
+        // Chargement de l'icône d'exclamation
+        this.load.image('exclamation', 'assets/exclamation.png');
     }
 
-    private createEnemy(x: number, y: number, type: number = 1): CustomEnemy {
-        const enemy = this.physics.add.sprite(x, y, 'enemy') as CustomEnemy;
-        enemy.setCollideWorldBounds(true);
-        enemy.enemyType = type;
-
-        // Apparence selon le type
-        switch(type) {
-            case 1:
-                enemy.setTint(0x0000ff); // Bleu pour type 1 (réagit au son)
-                break;
-            default:
-                enemy.setTint(0xff0000); // Rouge pour les autres types
-        }
-
-        // Ajouter les collisions avec le monde
+    private createEnemy(x: number, y: number, type: number = 1): Enemy {
+        const enemy = new Enemy(this, x, y, this.player, type);
         const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
         if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
-            this.physics.add.collider(enemy, worldLayerInfo.tilemapLayer);
-            // Utiliser un overlap au lieu d'un collider pour ne pas pousser le joueur
-            this.physics.add.overlap(this.player, enemy);
+            enemy.setupCollisions(worldLayerInfo.tilemapLayer);
         }
-
+        this.enemies.push(enemy);
         return enemy;
     }
 
@@ -279,39 +273,7 @@ export class Game2 extends Scene
             this.player.body.setOffset(offsetX, offsetY);
 
             // Création des animations du joueur
-            this.anims.create({
-                key: 'walk_down',
-                frames: this.anims.generateFrameNumbers('player', { start: 0, end: 1 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'walk_left',
-                frames: this.anims.generateFrameNumbers('player', { start: 2, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'walk_right',
-                frames: this.anims.generateFrameNumbers('player', { start: 4, end: 5 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'walk_up',
-                frames: this.anims.generateFrameNumbers('player', { start: 6, end: 7 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'idle',
-                frames: [{ key: 'player', frame: 0 }],
-                frameRate: 1
-            });
+            this.createPlayerAnimations();
 
             // Ajouter les collisions entre le joueur et le monde
             if (worldLayer && decorLayer) {
@@ -320,20 +282,10 @@ export class Game2 extends Scene
                 console.log('Player collisions added with both layers');
             }
 
-            // Création de l'ennemi avec la nouvelle fonction
-            this.enemy = this.createEnemy(spawnX + 300, spawnY, 1);
+            // Création du premier ennemi
+            this.createEnemy(spawnX + 300, spawnY, 1);
 
-            // Création des clés depuis le Calque d'Objets 1
-            const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
-            if (keyObjects) {
-                keyObjects.forEach(keyObj => {
-                    if (keyObj.x !== undefined && keyObj.y !== undefined) {
-                        this.createKey(keyObj.x, keyObj.y);
-                    }
-                });
-            }
-
-            // Création des monstres depuis le Calque d'Objets 2
+            // Création des monstres supplémentaires depuis le Calque d'Objets 2
             const monsterObjects = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterHF");
             if (monsterObjects) {
                 monsterObjects.forEach(monsterObj => {
@@ -342,6 +294,11 @@ export class Game2 extends Scene
                     }
                 });
             }
+
+            // Création de l'exclamation sprite
+            this.exclamationSprite = this.add.sprite(spawnX, spawnY - 50, 'exclamation')
+                .setScale(0.1)
+                .setVisible(false);
 
             // Écouter les événements de son
             EventBus.on('sound-level', (level: number) => {
@@ -377,6 +334,42 @@ export class Game2 extends Scene
         }
     }
 
+    private createPlayerAnimations() {
+        this.anims.create({
+            key: 'walk_down',
+            frames: this.anims.generateFrameNumbers('player', { start: 0, end: 1 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walk_left',
+            frames: this.anims.generateFrameNumbers('player', { start: 2, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walk_right',
+            frames: this.anims.generateFrameNumbers('player', { start: 4, end: 5 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walk_up',
+            frames: this.anims.generateFrameNumbers('player', { start: 6, end: 7 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'idle',
+            frames: [{ key: 'player', frame: 0 }],
+            frameRate: 1
+        });
+    }
+
     private createShadowSystem() {
         // Créer un grand rectangle noir qui couvre toute la map
         const darkness = this.add.graphics();
@@ -402,10 +395,9 @@ export class Game2 extends Scene
     {
         // Gestion des déplacements du joueur
         const speed = 175;
-        const enemySpeed = 100; // Vitesse de l'ennemi (plus lente que le joueur)
-        const mentalDamageDistance = 150; // Distance à laquelle l'ennemi affecte la santé mentale
+        const mentalDamageDistance = 150;
 
-        if (!this.cursors || !this.player || !this.enemy || !this.input.keyboard) {
+        if (!this.cursors || !this.player || !this.input.keyboard) {
             return;
         }
 
@@ -441,54 +433,25 @@ export class Game2 extends Scene
             this.player.body.velocity.normalize().scale(speed);
         }
 
-        // Faire suivre l'ennemi vers le joueur
-        const angle = Phaser.Math.Angle.Between(
-            this.enemy.x,
-            this.enemy.y,
-            this.player.x,
-            this.player.y
-        );
-
-        // Calculer la vélocité de l'ennemi en fonction de son type
-        if (this.enemy.enemyType === 1) {
-            // Type 1 : ne bouge que si le son est élevé
-            const SOUND_MOVEMENT_THRESHOLD = 60;
-            if (this.currentSoundLevel > SOUND_MOVEMENT_THRESHOLD) {
-                // Plus le son est fort, plus l'ennemi est rapide
-                const speedMultiplier = Math.min(this.currentSoundLevel / 50, 2); // Maximum 2x la vitesse normale
-                this.enemy.setVelocityX(Math.cos(angle) * enemySpeed * speedMultiplier);
-                this.enemy.setVelocityY(Math.sin(angle) * enemySpeed * speedMultiplier);
-                
-                // Effet visuel quand l'ennemi est activé par le son
-                this.enemy.setTint(0xff00ff); // Violet quand activé par le son
-            } else {
-                // Arrêter l'ennemi si le son est faible
-                this.enemy.setVelocity(0, 0);
-                this.enemy.setTint(0x0000ff); // Bleu quand inactif
+        // Mise à jour des ennemis
+        let isEnemyNear = false;
+        for (const enemy of this.enemies) {
+            enemy.setCurrentSoundLevel(this.currentSoundLevel);
+            enemy.update();
+            
+            const distance = enemy.getDistanceToTarget();
+            if (distance < mentalDamageDistance) {
+                EventBus.emit('enemy-near');
+                isEnemyNear = true;
             }
-        } else {
-            // Autres types : comportement normal
-            this.enemy.setVelocityX(Math.cos(angle) * enemySpeed);
-            this.enemy.setVelocityY(Math.sin(angle) * enemySpeed);
         }
 
-        // Vérifier la distance entre le joueur et l'ennemi
-        const distance = Phaser.Math.Distance.Between(
-            this.enemy.x,
-            this.enemy.y,
-            this.player.x,
-            this.player.y
-        );
-
-        // Si l'ennemi est proche, accélérer la perte de santé mentale
-        if (distance < mentalDamageDistance) {
-            // Émettre un événement pour accélérer la diminution du timer
-            EventBus.emit('enemy-near');
-            
-            // Effet visuel sur l'ennemi pour montrer qu'il affecte le joueur
-            this.enemy.setTint(0xff0000);
+        // Mise à jour de l'exclamation
+        if (isEnemyNear) {
+            this.exclamationSprite.setVisible(true);
+            this.exclamationSprite.setPosition(this.player.x, this.player.y - 50);
         } else {
-            this.enemy.clearTint();
+            this.exclamationSprite.setVisible(false);
         }
 
         // Mettre à jour la position de la zone de vision

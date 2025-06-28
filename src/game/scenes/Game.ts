@@ -1,21 +1,17 @@
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
-
-// Interface pour l'ennemi
-interface CustomEnemy extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
-    enemyType: number;
-}
+import { Enemy } from '../entities/Enemy';
 
 export class Game extends Scene
 {
     private camera: Phaser.Cameras.Scene2D.Camera;
     private map: Phaser.Tilemaps.Tilemap;
     private player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-    private enemy: CustomEnemy;
+    private enemies: Enemy[] = [];
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null;
     private currentSoundLevel: number = 0;
     private key: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-    private hasKey: boolean = false; // Nouvelle propriété pour suivre si la clé a été collectée
+    private hasKey: boolean = false;
     
     // Propriétés pour le microphone
     private audioContext: AudioContext;
@@ -206,35 +202,13 @@ export class Game extends Scene
         //this.load.image('key', 'assets/key.png');
     }
 
-    private createEnemy(x: number, y: number, type: number = 1): CustomEnemy {
-        const enemy = this.physics.add.sprite(x, y, 'enemy') as CustomEnemy;
-        enemy.setCollideWorldBounds(true);
-        enemy.enemyType = type;
-
-        // Créer les animations de l'ennemi
-        if (!this.anims.exists('enemy_right')) {
-            this.anims.create({
-                key: 'enemy_right',
-                frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'enemy_left',
-                frames: this.anims.generateFrameNumbers('enemy', { start: 4, end: 7 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        // Ajouter les collisions avec le monde
+    private createEnemy(x: number, y: number, type: number = 1): Enemy {
+        const enemy = new Enemy(this, x, y, this.player, type);
         const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
         if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
-            this.physics.add.collider(enemy, worldLayerInfo.tilemapLayer);
-            this.physics.add.overlap(this.player, enemy);
+            enemy.setupCollisions(worldLayerInfo.tilemapLayer);
         }
-
+        this.enemies.push(enemy);
         return enemy;
     }
 
@@ -353,8 +327,8 @@ export class Game extends Scene
                 console.log('Player collisions added with both layers');
             }
 
-            // Création de l'ennemi avec la nouvelle fonction
-            this.enemy = this.createEnemy(spawnX + 300, spawnY, 1);
+            // Création du premier ennemi
+            this.createEnemy(spawnX + 300, spawnY, 1);
 
             // Création des clés depuis le Calque d'Objets 1
             const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
@@ -366,7 +340,7 @@ export class Game extends Scene
                 });
             }
 
-            // Création des monstres depuis le Calque d'Objets 2
+            // Création des monstres supplémentaires depuis le Calque d'Objets 2
             const monsterObjects = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterHF");
             if (monsterObjects) {
                 monsterObjects.forEach(monsterObj => {
@@ -408,8 +382,14 @@ export class Game extends Scene
                 this.currentSoundLevel = level;
             });
 
-            // Création de l'exclamation sprite
-            this.exclamationSprite = this.add.sprite(spawnX + 300, spawnY, 'exclamation').setScale(0.1);
+            // Création de l'exclamation sprite (maintenant positionnée au-dessus du premier ennemi)
+            if (this.enemies.length > 0) {
+                const firstEnemy = this.enemies[0].getSprite();
+                this.exclamationSprite = this.add.sprite(firstEnemy.x, firstEnemy.y, 'exclamation').setScale(0.1);
+            } else {
+                // Fallback position si aucun ennemi n'est présent
+                this.exclamationSprite = this.add.sprite(spawnX + 300, spawnY, 'exclamation').setScale(0.1);
+            }
 
             EventBus.emit('current-scene-ready', this);
         } catch (error) {
@@ -443,10 +423,9 @@ export class Game extends Scene
     {
         // Gestion des déplacements du joueur
         const speed = 175;
-        const enemySpeed = 100; // Vitesse de l'ennemi (plus lente que le joueur)
-        const mentalDamageDistance = 150; // Distance à laquelle l'ennemi affecte la santé mentale
+        const mentalDamageDistance = 150;
 
-        if (!this.cursors || !this.player || !this.enemy || !this.input.keyboard) {
+        if (!this.cursors || !this.player || !this.input.keyboard) {
             return;
         }
 
@@ -460,7 +439,6 @@ export class Game extends Scene
                 doorObject.y
             );
             
-            // Si le joueur est à moins de 50 pixels de la porte ET a la clé
             if (distanceToDoor < 50 && this.hasKey) {
                 this.scene.start('Game2');
                 return;
@@ -497,88 +475,32 @@ export class Game extends Scene
             this.player.body.velocity.normalize().scale(speed);
         }
 
-        // Faire suivre l'ennemi vers le joueur
-        const angle = Phaser.Math.Angle.Between(
-            this.enemy.x,
-            this.enemy.y,
-            this.player.x,
-            this.player.y
-        );
-
-        // Calculer la vélocité de l'ennemi en fonction de son type
-        if (this.enemy.enemyType === 1) {
-            // Type 1 : ne bouge que si le son est élevé
-            const SOUND_MOVEMENT_THRESHOLD = 60;
-            if (this.currentSoundLevel > SOUND_MOVEMENT_THRESHOLD) {
-                // Plus le son est fort, plus l'ennemi est rapide
-                const speedMultiplier = Math.min(this.currentSoundLevel / 50, 2); // Maximum 2x la vitesse normale
-                const velocityX = Math.cos(angle) * enemySpeed * speedMultiplier;
-                const velocityY = Math.sin(angle) * enemySpeed * speedMultiplier;
-                
-                this.enemy.setVelocityX(velocityX);
-                this.enemy.setVelocityY(velocityY);
-
-                // Jouer l'animation appropriée en fonction de la direction
-                if (velocityX > 0) {
-                    this.enemy.anims.play('enemy_right', true);
-                } else {
-                    this.enemy.anims.play('enemy_left', true);
-                }
-            } else {
-                // Arrêter l'ennemi si le son est faible
-                this.enemy.setVelocity(0, 0);
-                this.enemy.anims.stop(); // Arrêter l'animation
-            }
-        } else {
-            // Autres types : comportement normal
-            const velocityX = Math.cos(angle) * enemySpeed;
-            const velocityY = Math.sin(angle) * enemySpeed;
+        // Mettre à jour tous les ennemis
+        for (const enemy of this.enemies) {
+            enemy.setCurrentSoundLevel(this.currentSoundLevel);
+            enemy.update();
             
-            this.enemy.setVelocityX(velocityX);
-            this.enemy.setVelocityY(velocityY);
-
-            // Jouer l'animation appropriée en fonction de la direction
-            if (velocityX > 0) {
-                this.enemy.anims.play('enemy_right', true);
+            // Vérifier la distance pour chaque ennemi
+            const distance = enemy.getDistanceToTarget();
+            if (distance < mentalDamageDistance) {
+                EventBus.emit('enemy-near');
+                this.exclamationSprite.setVisible(true);
+                this.exclamationSprite.setPosition(this.player.x, this.player.y - 50);
             } else {
-                this.enemy.anims.play('enemy_left', true);
+                this.exclamationSprite.setVisible(false);
             }
-        }
-
-        // Vérifier la distance entre le joueur et l'ennemi
-        const distance = Phaser.Math.Distance.Between(
-            this.enemy.x,
-            this.enemy.y,
-            this.player.x,
-            this.player.y
-        );
-
-        // Si l'ennemi est proche, accélérer la perte de santé mentale
-        if (distance < mentalDamageDistance) {
-            // Émettre un événement pour accélérer la diminution du timer
-            EventBus.emit('enemy-near');
-            
-            // Afficher et positionner l'exclamation au-dessus du joueur
-            this.exclamationSprite.setVisible(true);
-            this.exclamationSprite.setPosition(this.player.x, this.player.y - 50); // 50 pixels au-dessus du joueur
-        } else {
-            // Cacher l'exclamation quand l'ennemi est loin
-            this.exclamationSprite.setVisible(false);
         }
 
         // Mettre à jour la position de la zone de vision
         if (this.lightCircle && this.player) {
             this.lightCircle.setPosition(this.player.x, this.player.y);
             
-            // Effet de "respiration" de la zone de vision
             this.lightCircle.clear();
             this.lightCircle.fillStyle(0xffffff);
             
-            // Le rayon dépend maintenant de la valeur du timer
             const baseRadius = 150;
-            const radius = baseRadius * (this.timerValue / 100); // Le rayon diminue avec le timer
+            const radius = baseRadius * (this.timerValue / 100);
             
-            // Dessiner un cercle plein avec une opacité faible
             this.lightCircle.fillStyle(0xffffff, 0.3);
             this.lightCircle.fillCircle(0, 0, radius);
 
