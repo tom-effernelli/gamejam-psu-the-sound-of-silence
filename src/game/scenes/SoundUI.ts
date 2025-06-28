@@ -6,7 +6,7 @@ export class SoundUI extends Scene {
     private soundBarBg: Phaser.GameObjects.Graphics;
     private debugText: Phaser.GameObjects.Text;
     private statusText: Phaser.GameObjects.Text;
-    private readonly SOUND_THRESHOLD = 90; // Seuil à partir duquel on considère le son comme "fort"
+    private readonly SOUND_THRESHOLD = 130; // Seuil à partir duquel on considère le son comme "fort"
     private lastIncreaseTime = 0; // Pour éviter d'augmenter trop souvent
     private isVisible: boolean = true; // Nouvelle propriété pour contrôler la visibilité
 

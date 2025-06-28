@@ -2,6 +2,7 @@ import { Boot } from './scenes/Boot';
 import { GameOver } from './scenes/GameOver';
 import { Game as MainGame } from './scenes/Game';
 import { Game2 as MainGame2 } from './scenes/Game2';
+import { Game3 as MainGame3 } from './scenes/Game3';
 import { MainMenu } from './scenes/MainMenu';
 import { AUTO, Game } from 'phaser';
 import { Preloader } from './scenes/Preloader';
@@ -32,6 +33,7 @@ const config: Phaser.Types.Core.GameConfig = {
         MainMenu,
         MainGame,
         MainGame2,
+        MainGame3,
         GameOver,
         Boot,
         SoundUI,

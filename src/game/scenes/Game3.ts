@@ -7,7 +7,7 @@ interface CustomEnemy extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody 
     enemyType: number;
 }
 
-export class Game2 extends Scene
+export class Game3 extends Scene
 {
     private camera: Phaser.Cameras.Scene2D.Camera;
     private map: Phaser.Tilemaps.Tilemap;
@@ -37,11 +37,9 @@ export class Game2 extends Scene
     private lightCircle: Phaser.GameObjects.Graphics;
     private timerValue: number = 100; // Nouvelle propriété pour stocker la valeur du timer
 
-    private doorPositions: Array<{x: number, y: number}> = [];
-
     constructor ()
     {
-        super('Game2');  // Changed scene key to 'Game2'
+        super('Game3');  // Changed scene key to 'Game3'
         this.audioContext = new AudioContext();
         this.dataArray = new Uint8Array(1024);
     }
@@ -141,12 +139,17 @@ export class Game2 extends Scene
         console.log('Key sprite created:', key);
         
         // Redimensionnement de la clé
-        key.setScale(1); // Réduire à 10% de sa taille originale
+        key.setScale(1);
         
-        // Ajout des collisions avec le monde
-        const worldLayerInfo = this.map.getLayer('World');
+        // Ajout des collisions avec tous les layers
+        const worldLayerInfo = this.map.getLayer('Calque de Tuiles 1');
+        const decorLayerInfo = this.map.getLayer('Calque de Tuiles 2');
+        
         if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
             this.physics.add.collider(key, worldLayerInfo.tilemapLayer);
+        }
+        if (decorLayerInfo && decorLayerInfo.tilemapLayer) {
+            this.physics.add.collider(key, decorLayerInfo.tilemapLayer);
         }
     
         // Ajout de la collision avec le joueur APRÈS l'initialisation complète
@@ -171,6 +174,24 @@ export class Game2 extends Scene
         console.log('Clé collectée !');
     }
 
+    private createEnemy(x: number, y: number, type: number = 1): Enemy {
+        const enemy = new Enemy(this, x, y, this.player, type);
+        
+        // Ajouter les collisions avec tous les layers
+        const worldLayerInfo = this.map.getLayer('Calque de Tuiles 1');
+        const decorLayerInfo = this.map.getLayer('Calque de Tuiles 2');
+        
+        if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
+            enemy.setupCollisions(worldLayerInfo.tilemapLayer);
+        }
+        if (decorLayerInfo && decorLayerInfo.tilemapLayer) {
+            enemy.setupCollisions(decorLayerInfo.tilemapLayer);
+        }
+        
+        this.enemies.push(enemy);
+        return enemy;
+    }
+
     preload ()
     {
         this.load.on('loaderror', (file: { key: string; url: string }) => {
@@ -179,7 +200,7 @@ export class Game2 extends Scene
 
         // Chargement de la tilemap et du tileset
         console.log('Loading tilemap...');
-        this.load.tilemapTiledJSON('map2', 'assets/Niveau2.tmj');  // Changed map key and file
+        this.load.tilemapTiledJSON('map3', 'assets/Niveau3.tmj');  // Changed map key and file
         console.log('Loading tileset...');
         this.load.image('tiles', 'assets/dungeon.png');
         console.log('Assets loaded in preload');
@@ -199,16 +220,6 @@ export class Game2 extends Scene
         this.load.image('exclamation', 'assets/exclamation.png');
     }
 
-    private createEnemy(x: number, y: number, type: number = 1): Enemy {
-        const enemy = new Enemy(this, x, y, this.player, type);
-        const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
-        if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
-            enemy.setupCollisions(worldLayerInfo.tilemapLayer);
-        }
-        this.enemies.push(enemy);
-        return enemy;
-    }
-
     private createDoorSprites() {
         // Trouver tous les objets "Door" dans le calque d'objets
         const doorObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Door");
@@ -220,25 +231,9 @@ export class Game2 extends Scene
                     const doorSprite = this.add.rectangle(door.x, door.y, 32, 32, 0x000000);
                     doorSprite.setOrigin(0, 0); // Définir l'origine en haut à gauche
                     doorSprite.setDepth(1); // S'assurer que le sprite est au-dessus du sol mais en-dessous de l'ombre
-
-                    // Stocker la position de la porte pour plus tard
-                    this.doorPositions.push({x: door.x, y: door.y});
                 }
             });
         }
-    }
-
-    private setupDoorCollisions() {
-        // Créer les zones de collision pour chaque porte
-        this.doorPositions.forEach(door => {
-            const doorZone = this.add.rectangle(door.x, door.y, 32, 32);
-            this.physics.add.existing(doorZone, true);
-            
-            // Ajouter la collision avec le joueur
-            this.physics.add.overlap(this.player, doorZone, () => {
-                this.scene.start('Game3');
-            });
-        });
     }
 
     async create() {
@@ -258,7 +253,7 @@ export class Game2 extends Scene
         // Création de la tilemap
         console.log('Creating tilemap...');
         try {
-            this.map = this.make.tilemap({ key: 'map2' });  // Changed map key
+            this.map = this.make.tilemap({ key: 'map3' });  // Changed map key
             if (!this.map) {
                 throw new Error('Failed to create tilemap');
             }
@@ -274,9 +269,9 @@ export class Game2 extends Scene
             
             // Création des layers
             const worldLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
-            const decorLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
+            const decorLayer = this.map.createLayer('Calque de Tuiles 2', tileset, 0, 0);
 
-            // Activer les collisions sur le layer World
+            // Activer les collisions sur les layers
             if (worldLayer && decorLayer) {
                 worldLayer.setCollisionByProperty({ collision: true });
                 decorLayer.setCollisionByProperty({ collision: true });
@@ -285,7 +280,7 @@ export class Game2 extends Scene
                 console.error('Failed to create layers');
             }
 
-            // Création des sprites de portes (sans les collisions pour l'instant)
+            // Création des sprites de portes
             this.createDoorSprites();
 
             // Création du joueur
@@ -312,15 +307,28 @@ export class Game2 extends Scene
             // Création des animations du joueur
             this.createPlayerAnimations();
 
-            // Ajouter les collisions entre le joueur et le monde
+            // Ajouter les collisions entre le joueur et les layers
             if (worldLayer && decorLayer) {
                 this.physics.add.collider(this.player, worldLayer);
                 this.physics.add.collider(this.player, decorLayer);
                 console.log('Player collisions added with both layers');
             }
 
-            // Maintenant que le joueur est créé, on peut configurer les collisions des portes
-            this.setupDoorCollisions();
+            // Debug: afficher les collisions
+            if (worldLayer && decorLayer) {
+                const debugGraphics = this.add.graphics().setAlpha(0.75);
+                worldLayer.renderDebug(debugGraphics, {
+                    tileColor: null,
+                    collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Orange
+                    faceColor: new Phaser.Display.Color(40, 39, 37, 255)
+                });
+
+                decorLayer.renderDebug(debugGraphics, {
+                    tileColor: null,
+                    collidingTileColor: new Phaser.Display.Color(255, 0, 0, 255), // Rouge
+                    faceColor: new Phaser.Display.Color(40, 39, 37, 255)
+                });
+            }
 
             // Création des clés
             const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
