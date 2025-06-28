@@ -1,13 +1,19 @@
 import { EventBus } from '../EventBus';
 import { Scene } from 'phaser';
 
+// Interface pour l'ennemi
+interface CustomEnemy extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody {
+    enemyType: number;
+}
+
 export class Game extends Scene
 {
     private camera: Phaser.Cameras.Scene2D.Camera;
     private map: Phaser.Tilemaps.Tilemap;
     private player: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-    private enemy: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
+    private enemy: CustomEnemy;
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+    private currentSoundLevel: number = 0;
     
     // Propriétés pour le microphone
     private audioContext: AudioContext;
@@ -136,6 +142,30 @@ export class Game extends Scene
         this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
     }
 
+    private createEnemy(x: number, y: number, type: number = 1): CustomEnemy {
+        const enemy = this.physics.add.sprite(x, y, 'enemy') as CustomEnemy;
+        enemy.setCollideWorldBounds(true);
+        enemy.enemyType = type;
+
+        // Apparence selon le type
+        switch(type) {
+            case 1:
+                enemy.setTint(0x0000ff); // Bleu pour type 1 (réagit au son)
+                break;
+            default:
+                enemy.setTint(0xff0000); // Rouge pour les autres types
+        }
+
+        // Ajouter les collisions avec le monde
+        const worldLayerInfo = this.map.getLayer('World');
+        if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
+            this.physics.add.collider(enemy, worldLayerInfo.tilemapLayer);
+            this.physics.add.collider(this.player, enemy);
+        }
+
+        return enemy;
+    }
+
     async create() {
         // Active la physique Arcade
         this.physics.world.setBounds(0, 0, 1280, 1280);
@@ -174,19 +204,19 @@ export class Game extends Scene
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
             this.player.setCollideWorldBounds(true);
 
-            // Création de l'ennemi
-            this.enemy = this.physics.add.sprite(spawnX + 100, spawnY + 100, 'enemy');
-            this.enemy.setCollideWorldBounds(true);
-            this.enemy.setTint(0x0000ff); // Teinte bleue pour l'ennemi
-
-            // Collision entre le joueur et le layer World
+            // Ajouter les collisions entre le joueur et le monde
             const worldLayerInfo = this.map.getLayer('World');
             if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
                 this.physics.add.collider(this.player, worldLayerInfo.tilemapLayer);
-                this.physics.add.collider(this.enemy, worldLayerInfo.tilemapLayer);
-                // Collision entre le joueur et l'ennemi
-                this.physics.add.collider(this.player, this.enemy);
             }
+
+            // Création de l'ennemi avec la nouvelle fonction
+            this.enemy = this.createEnemy(spawnX + 100, spawnY - 200, 1);
+
+            // Écouter les événements de son
+            EventBus.on('sound-level', (level: number) => {
+                this.currentSoundLevel = level;
+            });
 
             // Création du système d'ombre
             this.createShadowSystem();
@@ -272,9 +302,28 @@ export class Game extends Scene
             this.player.y
         );
 
-        // Calculer la vélocité de l'ennemi
-        this.enemy.setVelocityX(Math.cos(angle) * enemySpeed);
-        this.enemy.setVelocityY(Math.sin(angle) * enemySpeed);
+        // Calculer la vélocité de l'ennemi en fonction de son type
+        if (this.enemy.enemyType === 1) {
+            // Type 1 : ne bouge que si le son est élevé
+            const SOUND_MOVEMENT_THRESHOLD = 60;
+            if (this.currentSoundLevel > SOUND_MOVEMENT_THRESHOLD) {
+                // Plus le son est fort, plus l'ennemi est rapide
+                const speedMultiplier = Math.min(this.currentSoundLevel / 50, 2); // Maximum 2x la vitesse normale
+                this.enemy.setVelocityX(Math.cos(angle) * enemySpeed * speedMultiplier);
+                this.enemy.setVelocityY(Math.sin(angle) * enemySpeed * speedMultiplier);
+                
+                // Effet visuel quand l'ennemi est activé par le son
+                this.enemy.setTint(0xff00ff); // Violet quand activé par le son
+            } else {
+                // Arrêter l'ennemi si le son est faible
+                this.enemy.setVelocity(0, 0);
+                this.enemy.setTint(0x0000ff); // Bleu quand inactif
+            }
+        } else {
+            // Autres types : comportement normal
+            this.enemy.setVelocityX(Math.cos(angle) * enemySpeed);
+            this.enemy.setVelocityY(Math.sin(angle) * enemySpeed);
+        }
 
         // Vérifier la distance entre le joueur et l'ennemi
         const distance = Phaser.Math.Distance.Between(

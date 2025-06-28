@@ -40,6 +40,12 @@ export class TimerUI extends Scene {
             padding: { x: 10, y: 5 }
         });
 
+        // Rendre les éléments invisibles
+        this.timerBar.visible = false;
+        this.timerBarBg.visible = false;
+        this.timerText.visible = false;
+        this.flashEffect.visible = false;
+
         // Timer plus rapide (50ms au lieu de 1000ms)
         this.timer = this.time.addEvent({
             delay: 50,
@@ -76,6 +82,7 @@ export class TimerUI extends Scene {
             this.flashEffect.clear();
             this.flashEffect.fillStyle(0xffff00, 0.5);
             this.flashEffect.fillRect(20, 150, 200, 30);
+            this.flashEffect.visible = false; // Maintenir invisible après le flash
             
             // Animation de disparition du flash
             this.tweens.add({
@@ -85,6 +92,7 @@ export class TimerUI extends Scene {
                 onComplete: () => {
                     this.flashEffect.clear();
                     this.flashEffect.alpha = 1;
+                    this.flashEffect.visible = false; // Maintenir invisible après l'animation
                 }
             });
         }
@@ -116,10 +124,12 @@ export class TimerUI extends Scene {
         this.timerBar.fillStyle(color || this.getTimerColor(), 1);
         const barWidth = (this.timerValue / 100) * 200;
         this.timerBar.fillRect(20, 150, barWidth, 30);
+        this.timerBar.visible = false; // Maintenir invisible après le dessin
 
         // Mettre à jour le texte
         if (this.timerText) {
             this.timerText.setText(`Mental Health`);
+            this.timerText.visible = false; // Maintenir invisible après la mise à jour
         }
 
         // Émettre la nouvelle valeur du timer
