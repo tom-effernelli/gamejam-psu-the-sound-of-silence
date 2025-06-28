@@ -290,7 +290,7 @@ export class Game extends Scene
             }
 
             // Création de l'ennemi avec la nouvelle fonction
-            this.enemy = this.createEnemy(spawnX + 100, spawnY - 200, 1);
+            this.enemy = this.createEnemy(spawnX + 300, spawnY, 1);
 
             // Création des clés depuis le Calque d'Objets 1
             const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
