@@ -6,7 +6,7 @@ interface CustomEnemy extends Phaser.Types.Physics.Arcade.SpriteWithDynamicBody 
     enemyType: number;
 }
 
-export class Game extends Scene
+export class Game2 extends Scene
 {
     private camera: Phaser.Cameras.Scene2D.Camera;
     private map: Phaser.Tilemaps.Tilemap;
@@ -15,7 +15,6 @@ export class Game extends Scene
     private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null;
     private currentSoundLevel: number = 0;
     private key: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-    private hasKey: boolean = false; // Nouvelle propriété pour suivre si la clé a été collectée
     
     // Propriétés pour le microphone
     private audioContext: AudioContext;
@@ -35,11 +34,10 @@ export class Game extends Scene
     private mask: Phaser.Display.Masks.GeometryMask;
     private lightCircle: Phaser.GameObjects.Graphics;
     private timerValue: number = 100; // Nouvelle propriété pour stocker la valeur du timer
-    private exclamationSprite: Phaser.GameObjects.Sprite; // Sprite pour l'exclamation
 
     constructor ()
     {
-        super('Game');
+        super('Game2');  // Changed scene key to 'Game2'
         this.audioContext = new AudioContext();
         this.dataArray = new Uint8Array(1024);
     }
@@ -163,9 +161,6 @@ export class Game extends Scene
         const keySprite = obj2 as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
         keySprite.disableBody(true, true);
         
-        // Marquer la clé comme collectée
-        this.hasKey = true;
-        
         // Émet un événement pour indiquer que la clé a été collectée
         EventBus.emit('key-collected');
         
@@ -180,30 +175,17 @@ export class Game extends Scene
 
         // Chargement de la tilemap et du tileset
         console.log('Loading tilemap...');
-        this.load.tilemapTiledJSON('map', 'assets/Niveau1.tmj');
+        this.load.tilemapTiledJSON('map2', 'assets/Niveau2.tmj');  // Changed map key and file
         console.log('Loading tileset...');
         this.load.image('tiles', 'assets/dungeon.png');
         console.log('Assets loaded in preload');
         
-        // Chargement du sprite du joueur (un carré rouge pour l'instant)
-        //this.load.image('player', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
         this.load.spritesheet('player', 'assets/Character.png', {
             frameWidth: 32,
             frameHeight: 32
         });
 
-        // Chargement du sprite de l'ennemi (un carré bleu)
-        //this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
-        this.load.spritesheet('enemy', 'assets/Monster1.png', {
-            frameWidth: 50,
-            frameHeight: 50
-        });
-
-        // Chargement de l'icône d'exclamation
-        this.load.image('exclamation', 'assets/exclamation.png');
-
-        // Chargement du sprite de la clé (un carré jaune pour l'instant)
-        //this.load.image('key', 'assets/key.png');
+        this.load.image('enemy', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGklEQVRYR+3BAQEAAACCIP+vbkhAAQAAAO8GECAAAZf3V9cAAAAASUVORK5CYII=');
     }
 
     private createEnemy(x: number, y: number, type: number = 1): CustomEnemy {
@@ -211,27 +193,20 @@ export class Game extends Scene
         enemy.setCollideWorldBounds(true);
         enemy.enemyType = type;
 
-        // Créer les animations de l'ennemi
-        if (!this.anims.exists('enemy_right')) {
-            this.anims.create({
-                key: 'enemy_right',
-                frames: this.anims.generateFrameNumbers('enemy', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'enemy_left',
-                frames: this.anims.generateFrameNumbers('enemy', { start: 4, end: 7 }),
-                frameRate: 8,
-                repeat: -1
-            });
+        // Apparence selon le type
+        switch(type) {
+            case 1:
+                enemy.setTint(0x0000ff); // Bleu pour type 1 (réagit au son)
+                break;
+            default:
+                enemy.setTint(0xff0000); // Rouge pour les autres types
         }
 
         // Ajouter les collisions avec le monde
         const worldLayerInfo = this.map.getLayer('Calque de Tuiles 3');
         if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
             this.physics.add.collider(enemy, worldLayerInfo.tilemapLayer);
+            // Utiliser un overlap au lieu d'un collider pour ne pas pousser le joueur
             this.physics.add.overlap(this.player, enemy);
         }
 
@@ -255,7 +230,7 @@ export class Game extends Scene
         // Création de la tilemap
         console.log('Creating tilemap...');
         try {
-            this.map = this.make.tilemap({ key: 'map' });
+            this.map = this.make.tilemap({ key: 'map2' });  // Changed map key
             if (!this.map) {
                 throw new Error('Failed to create tilemap');
             }
@@ -278,22 +253,6 @@ export class Game extends Scene
                 worldLayer.setCollisionByProperty({ collision: true });
                 decorLayer.setCollisionByProperty({ collision: true });
                 console.log('Collisions activated for both layers');
-                
-                // Debug: afficher les collisions pour worldLayer
-/*                const debugGraphics = this.add.graphics().setAlpha(0.75);
-                worldLayer.renderDebug(debugGraphics, {
-                    tileColor: null,
-                    collidingTileColor: new Phaser.Display.Color(243, 134, 48, 255), // Orange vif
-                    faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Couleur des faces
-                });
-
-                // Debug: afficher les collisions pour decorLayer avec une couleur différente
-                const debugGraphics2 = this.add.graphics().setAlpha(0.75);
-                decorLayer.renderDebug(debugGraphics2, {
-                    tileColor: null,
-                    collidingTileColor: new Phaser.Display.Color(255, 0, 0, 255), // Rouge vif pour distinguer
-                    faceColor: new Phaser.Display.Color(40, 39, 37, 255) // Couleur des faces
-                });*/
             } else {
                 console.error('Failed to create layers');
             }
@@ -306,7 +265,6 @@ export class Game extends Scene
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
             this.player.setScale(1.50);
             this.player.setCollideWorldBounds(true);
-
             const spriteWidth = this.player.width;
             const spriteHeight = this.player.height;
 
@@ -320,30 +278,39 @@ export class Game extends Scene
             this.player.body.setSize(hitboxWidth, hitboxHeight);
             this.player.body.setOffset(offsetX, offsetY);
 
-            // meow uwu OwO
-            // un plan de 25 secondes c'est clean i guess
-            // 
-
             // Création des animations du joueur
             this.anims.create({
-                key: 'idle',
-                frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'walk_right',
-                frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
+                key: 'walk_down',
+                frames: this.anims.generateFrameNumbers('player', { start: 0, end: 1 }),
                 frameRate: 8,
                 repeat: -1
             });
 
             this.anims.create({
                 key: 'walk_left',
-                frames: this.anims.generateFrameNumbers('player', { start: 8, end: 11 }),
+                frames: this.anims.generateFrameNumbers('player', { start: 2, end: 3 }),
                 frameRate: 8,
                 repeat: -1
+            });
+
+            this.anims.create({
+                key: 'walk_right',
+                frames: this.anims.generateFrameNumbers('player', { start: 4, end: 5 }),
+                frameRate: 8,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'walk_up',
+                frames: this.anims.generateFrameNumbers('player', { start: 6, end: 7 }),
+                frameRate: 8,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'idle',
+                frames: [{ key: 'player', frame: 0 }],
+                frameRate: 1
             });
 
             // Ajouter les collisions entre le joueur et le monde
@@ -403,14 +370,6 @@ export class Game extends Scene
                 this.timerValue = value;
             });
 
-            // Écouter les événements de son
-            EventBus.on('sound-level', (level: number) => {
-                this.currentSoundLevel = level;
-            });
-
-            // Création de l'exclamation sprite
-            this.exclamationSprite = this.add.sprite(spawnX + 300, spawnY, 'exclamation').setScale(0.1);
-
             EventBus.emit('current-scene-ready', this);
         } catch (error) {
             console.error('Error creating map:', error);
@@ -450,23 +409,6 @@ export class Game extends Scene
             return;
         }
 
-        // Vérifier si le joueur est près de la porte
-        const doorObject = this.map.findObject("Calque d'Objets 1", obj => obj.name === "Door");
-        if (doorObject && doorObject.x !== undefined && doorObject.y !== undefined) {
-            const distanceToDoor = Phaser.Math.Distance.Between(
-                this.player.x,
-                this.player.y,
-                doorObject.x,
-                doorObject.y
-            );
-            
-            // Si le joueur est à moins de 50 pixels de la porte ET a la clé
-            if (distanceToDoor < 50 && this.hasKey) {
-                this.scene.start('Game2');
-                return;
-            }
-        }
-
         // Déplacement horizontal
         if (this.cursors.left.isDown) {
             this.player.setVelocityX(-speed);
@@ -481,8 +423,10 @@ export class Game extends Scene
         // Déplacement vertical
         if (this.cursors.up.isDown) {
             this.player.setVelocityY(-speed);
+            this.player.anims.play('walk_up', true);
         } else if (this.cursors.down.isDown) {
             this.player.setVelocityY(speed);
+            this.player.anims.play('walk_down', true);
         } else {
             this.player.setVelocityY(0);
         }
@@ -512,37 +456,20 @@ export class Game extends Scene
             if (this.currentSoundLevel > SOUND_MOVEMENT_THRESHOLD) {
                 // Plus le son est fort, plus l'ennemi est rapide
                 const speedMultiplier = Math.min(this.currentSoundLevel / 50, 2); // Maximum 2x la vitesse normale
-                const velocityX = Math.cos(angle) * enemySpeed * speedMultiplier;
-                const velocityY = Math.sin(angle) * enemySpeed * speedMultiplier;
+                this.enemy.setVelocityX(Math.cos(angle) * enemySpeed * speedMultiplier);
+                this.enemy.setVelocityY(Math.sin(angle) * enemySpeed * speedMultiplier);
                 
-                this.enemy.setVelocityX(velocityX);
-                this.enemy.setVelocityY(velocityY);
-
-                // Jouer l'animation appropriée en fonction de la direction
-                if (velocityX > 0) {
-                    this.enemy.anims.play('enemy_right', true);
-                } else {
-                    this.enemy.anims.play('enemy_left', true);
-                }
+                // Effet visuel quand l'ennemi est activé par le son
+                this.enemy.setTint(0xff00ff); // Violet quand activé par le son
             } else {
                 // Arrêter l'ennemi si le son est faible
                 this.enemy.setVelocity(0, 0);
-                this.enemy.anims.stop(); // Arrêter l'animation
+                this.enemy.setTint(0x0000ff); // Bleu quand inactif
             }
         } else {
             // Autres types : comportement normal
-            const velocityX = Math.cos(angle) * enemySpeed;
-            const velocityY = Math.sin(angle) * enemySpeed;
-            
-            this.enemy.setVelocityX(velocityX);
-            this.enemy.setVelocityY(velocityY);
-
-            // Jouer l'animation appropriée en fonction de la direction
-            if (velocityX > 0) {
-                this.enemy.anims.play('enemy_right', true);
-            } else {
-                this.enemy.anims.play('enemy_left', true);
-            }
+            this.enemy.setVelocityX(Math.cos(angle) * enemySpeed);
+            this.enemy.setVelocityY(Math.sin(angle) * enemySpeed);
         }
 
         // Vérifier la distance entre le joueur et l'ennemi
@@ -558,12 +485,10 @@ export class Game extends Scene
             // Émettre un événement pour accélérer la diminution du timer
             EventBus.emit('enemy-near');
             
-            // Afficher et positionner l'exclamation au-dessus du joueur
-            this.exclamationSprite.setVisible(true);
-            this.exclamationSprite.setPosition(this.player.x, this.player.y - 50); // 50 pixels au-dessus du joueur
+            // Effet visuel sur l'ennemi pour montrer qu'il affecte le joueur
+            this.enemy.setTint(0xff0000);
         } else {
-            // Cacher l'exclamation quand l'ennemi est loin
-            this.exclamationSprite.setVisible(false);
+            this.enemy.clearTint();
         }
 
         // Mettre à jour la position de la zone de vision
@@ -594,4 +519,4 @@ export class Game extends Scene
     {
         this.scene.start('GameOver');
     }
-}
+} 
