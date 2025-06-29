@@ -8,7 +8,7 @@ export class SoundSettings extends Scene {
     private valueText: Phaser.GameObjects.Text;
     private titleText: Phaser.GameObjects.Text;
     private isDragging: boolean = false;
-    private currentValue: number = 45; // Valeur par défaut du SOUND_THRESHOLD
+    private currentValue: number = 60; // Valeur par défaut du SOUND_THRESHOLD
 
     constructor() {
         super({ key: 'SoundSettings', active: true });
