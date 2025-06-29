@@ -230,3 +230,7 @@ Created by [Phaser Studio](mailto:support@phaser.io). Powered by coffee, anime, 
 The Phaser logo and characters are &copy; 2011 - 2025 Phaser Studio Inc.
 
 All rights reserved.
+
+## About this project
+
+This is a web based game developped during a GameJam. Team : [imbjdd](https://github.com/imbjdd), [tom-effernelli](https://github.com/tom-effernelli), Elwan Saillant
