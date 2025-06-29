@@ -183,9 +183,9 @@ export class Game2 extends Scene
 
         // Chargement de la tilemap et du tileset
         console.log('Loading tilemap...');
-        this.load.tilemapTiledJSON('map2', 'assets/Niveau2.tmj');  // Changed map key and file
+        this.load.tilemapTiledJSON('map2', 'assets/Level2.tmj');
         console.log('Loading tileset...');
-        this.load.image('tiles', 'assets/dungeon.png');
+        this.load.image('tiles', 'assets/Environment.png');
         console.log('Assets loaded in preload');
         
         this.load.spritesheet('player', 'assets/Character.png', {
@@ -195,6 +195,12 @@ export class Game2 extends Scene
 
         // Chargement du sprite de l'ennemi
         this.load.spritesheet('enemy', 'assets/Monster1.png', {
+            frameWidth: 50,
+            frameHeight: 50
+        });
+
+        // Chargement du sprite du deuxième type d'ennemi
+        this.load.spritesheet('Monster2', 'assets/Monster2.png', {
             frameWidth: 50,
             frameHeight: 50
         });
@@ -253,9 +259,10 @@ export class Game2 extends Scene
             doorObjects.forEach(door => {
                 if (door.x !== undefined && door.y !== undefined) {
                     // Créer un rectangle noir pour chaque porte
-                    const doorSprite = this.add.rectangle(door.x, door.y, 32, 32, 0x000000);
+                    /*const doorSprite = this.add.rectangle(door.x+40, door.y-45, 48, 48, 0x000000);
                     doorSprite.setOrigin(0, 0); // Définir l'origine en haut à gauche
                     doorSprite.setDepth(1); // S'assurer que le sprite est au-dessus du sol mais en-dessous de l'ombre
+                    */
                 }
             });
         }
@@ -286,7 +293,7 @@ export class Game2 extends Scene
             
             // Ajout du tileset à la map
             console.log('Adding tileset...');
-            const tileset = this.map.addTilesetImage('DungeonBasic', 'tiles');
+            const tileset = this.map.addTilesetImage('dungeonV3', 'tiles');
             if (!tileset) {
                 throw new Error('Failed to add tileset');
             }
@@ -295,11 +302,13 @@ export class Game2 extends Scene
             // Création des layers
             const worldLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
             const decorLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
+            const meublesLayer = this.map.createLayer('Calque de Tuiles 2', tileset, 0, 0);
 
             // Activer les collisions sur le layer World
-            if (worldLayer && decorLayer) {
+            if (worldLayer && decorLayer && meublesLayer) {
                 worldLayer.setCollisionByProperty({ collision: true });
                 decorLayer.setCollisionByProperty({ collision: true });
+                meublesLayer.setCollisionByProperty({ collision: true });
                 console.log('Collisions activated for both layers');
             } else {
                 console.error('Failed to create layers');
@@ -311,7 +320,7 @@ export class Game2 extends Scene
             // Création du joueur
             const spawnPoint = this.map.findObject("Calque d'Objets 1", obj => obj.name === "Player");
             const spawnX = spawnPoint ? (spawnPoint.x || 350) : 350;
-            const spawnY = spawnPoint ? (spawnPoint.y || 500) : 500;
+            const spawnY = spawnPoint ? (spawnPoint.y || 700) : 700;
             
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
             this.player.setScale(1.50);
@@ -333,9 +342,10 @@ export class Game2 extends Scene
             this.createPlayerAnimations();
 
             // Ajouter les collisions entre le joueur et le monde
-            if (worldLayer && decorLayer) {
+            if (worldLayer && decorLayer && meublesLayer) {
                 this.physics.add.collider(this.player, worldLayer);
                 this.physics.add.collider(this.player, decorLayer);
+                this.physics.add.collider(this.player, meublesLayer);
                 console.log('Player collisions added with both layers');
             }
 
@@ -349,9 +359,6 @@ export class Game2 extends Scene
                 });
             }
 
-            // Création du premier ennemi
-            this.createEnemy(spawnX + 300, spawnY, 1);
-
             // Création des monstres supplémentaires depuis le Calque d'Objets 2
             const monsterObjects = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterHF");
             if (monsterObjects) {
@@ -361,6 +368,16 @@ export class Game2 extends Scene
                     }
                 });
             }
+
+            const monsterObjects2 = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterLF");
+            if (monsterObjects2) {
+                monsterObjects2.forEach(monsterObj => {
+                    if (monsterObj.x !== undefined && monsterObj.y !== undefined) {
+                        this.createEnemy(monsterObj.x, monsterObj.y, 0);
+                    }
+                });
+            }
+
 
             // Création de l'exclamation sprite
             this.exclamationSprite = this.add.sprite(spawnX, spawnY - 50, 'exclamation')
@@ -476,8 +493,8 @@ export class Game2 extends Scene
                 const distanceToDoor = Phaser.Math.Distance.Between(
                     this.player.x,
                     this.player.y,
-                    doorObject.x,
-                    doorObject.y
+                    doorObject.x+40,
+                    doorObject.y-45
                 );
                 
                 if (distanceToDoor < 50) {
@@ -492,7 +509,7 @@ export class Game2 extends Scene
 
         // Gestion des déplacements du joueur
         const speed = 175;
-        const mentalDamageDistance = 150;
+        const mentalDamageDistance = 75;
 
         if (!this.cursors || !this.input.keyboard) {
             return;

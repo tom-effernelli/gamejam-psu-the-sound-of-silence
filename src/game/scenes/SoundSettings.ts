@@ -30,8 +30,8 @@ export class SoundSettings extends Scene {
         this.updateSliderHandle();
 
         // Texte de la valeur
-        this.valueText = this.add.text(width - 120, 100, `Seuil: ${this.currentValue}`, {
-            fontSize: '16px',
+        this.valueText = this.add.text(width - 120, 100, `Sensibilité micro ${this.currentValue}`, {
+            fontSize: '12px',
             color: '#ffffff',
             backgroundColor: '#000000',
             padding: { x: 10, y: 5 }

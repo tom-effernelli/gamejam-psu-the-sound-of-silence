@@ -80,13 +80,6 @@ export class SoundUI extends Scene {
             thresholdText.setText(`Seuil actuel: ${this.soundThreshold}`);
         });
 
-        // Temporaire: Écouter la touche espace
-        if (this.input.keyboard) {
-            this.input.keyboard.on('keydown-SPACE', () => {
-                EventBus.emit('increase-timer', 30);
-            });
-        }
-
         // Cacher l'interface sonore au démarrage
         this.setVisible(false);
         
@@ -117,7 +110,7 @@ export class SoundUI extends Scene {
         if (level > this.soundThreshold && currentTime - this.lastIncreaseTime > 100) {
             console.log('SoundUI: Son au-dessus du seuil', level, '>', this.soundThreshold);
             // Augmentation plus importante
-            const increase = Math.min(Math.floor((level - this.soundThreshold) / 2), 5);
+            const increase = Math.min(Math.floor((level - this.soundThreshold) / 2), 5)*0.7;
             if (increase > 0) {
                 console.log('SoundUI: Augmentation du timer de', increase);
                 EventBus.emit('increase-timer', increase);

@@ -109,4 +109,8 @@ export class Music extends Scene {
     isSceneReady(): boolean {
         return this.isReady;
     }
+
+    getBackgroundMusic(): Phaser.Sound.BaseSound | null {
+        return this.music;
+    }
 } 

@@ -64,7 +64,7 @@ export class TimerUI extends Scene {
         }, this);
         EventBus.on('enemy-near', () => {
             // Augmenter temporairement le taux de diminution quand l'ennemi est proche
-            this.decreaseAmount = 2.5;
+            this.decreaseAmount = 2;
             
             // Effet visuel sur la barre
             this.updateTimerBar(0xff0000);

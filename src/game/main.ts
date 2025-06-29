@@ -4,12 +4,15 @@ import { Game as MainGame } from './scenes/Game';
 import { Game2 as MainGame2 } from './scenes/Game2';
 import { Game3 as MainGame3 } from './scenes/Game3';
 import { MainMenu } from './scenes/MainMenu';
+import { Victory } from './scenes/Victory';
 import { AUTO, Game } from 'phaser';
 import { Preloader } from './scenes/Preloader';
 import { SoundUI } from './scenes/SoundUI';
 import { TimerUI } from './scenes/TimerUI';
 import { SoundSettings } from './scenes/SoundSettings';
 import { Music } from './scenes/Music';
+import { Credits } from './scenes/Credits';
+import { Help } from './scenes/Help';
 
 //  Find out more information about the Game Config at:
 //  https://newdocs.phaser.io/docs/3.70.0/Phaser.Types.Core.GameConfig
@@ -41,11 +44,14 @@ const config: Phaser.Types.Core.GameConfig = {
         MainGame2,
         MainGame3,
         GameOver,
+        Victory,
         Boot,
         SoundUI,
         TimerUI,
         SoundSettings,
-        Music
+        Music,
+        Credits,
+        Help
     ]
 };
 

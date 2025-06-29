@@ -183,9 +183,9 @@ export class Game extends Scene
 
         // Chargement de la tilemap et du tileset
         console.log('Loading tilemap...');
-        this.load.tilemapTiledJSON('map', 'assets/Niveau1.tmj');
+        this.load.tilemapTiledJSON('map', 'assets/Level1.tmj');
         console.log('Loading tileset...');
-        this.load.image('tiles', 'assets/dungeon.png');
+        this.load.image('tiles', 'assets/Environment.png');
         console.log('Assets loaded in preload');
         
         // Chargement du sprite du joueur
@@ -242,7 +242,7 @@ export class Game extends Scene
             
             // Ajout du tileset à la map
             console.log('Adding tileset...');
-            const tileset = this.map.addTilesetImage('DungeonBasic', 'tiles');
+            const tileset = this.map.addTilesetImage('dungeonV3', 'tiles');
             if (!tileset) {
                 throw new Error('Failed to add tileset');
             }
@@ -250,11 +250,13 @@ export class Game extends Scene
             
             // Création des layers
             const worldLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
+            const meublesLayer = this.map.createLayer('Calque de Tuiles 2', tileset, 0, 0);
             const decorLayer = this.map.createLayer('Calque de Tuiles 3', tileset, 0, 0);
 
             // Activer les collisions sur le layer World
-            if (worldLayer && decorLayer) {
+            if (worldLayer && decorLayer && meublesLayer) {
                 worldLayer.setCollisionByProperty({ collision: true });
+                meublesLayer.setCollisionByProperty({ collision: true });
                 decorLayer.setCollisionByProperty({ collision: true });
                 console.log('Collisions activated for both layers');
                 
@@ -326,14 +328,12 @@ export class Game extends Scene
             });
 
             // Ajouter les collisions entre le joueur et le monde
-            if (worldLayer && decorLayer) {
+            if (worldLayer && decorLayer && meublesLayer) {
                 this.physics.add.collider(this.player, worldLayer);
                 this.physics.add.collider(this.player, decorLayer);
+                this.physics.add.collider(this.player, meublesLayer);
                 console.log('Player collisions added with both layers');
             }
-
-            // Création du premier ennemi
-            this.createEnemy(spawnX + 300, spawnY, 1);
 
             // Création des clés depuis le Calque d'Objets 1
             const keyObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Key");
@@ -428,7 +428,7 @@ export class Game extends Scene
     {
         // Gestion des déplacements du joueur
         const speed = 175;
-        const mentalDamageDistance = 150;
+        const mentalDamageDistance = 75;
 
         if (!this.cursors || !this.player || !this.input.keyboard) {
             return;

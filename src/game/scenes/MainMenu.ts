@@ -8,6 +8,8 @@ export class MainMenu extends Scene
     logo: GameObjects.Image;
     title: GameObjects.Text;
     playButton: GameObjects.Text;
+    helpButton: GameObjects.Text;
+    creditsButton: GameObjects.Text;
     logoTween: Phaser.Tweens.Tween | null;
     startSound: Phaser.Sound.BaseSound;
     torch: GameObjects.Sprite;
@@ -75,6 +77,30 @@ export class MainMenu extends Scene
         .on('pointerdown', () => {
             this.startSound.play();
             this.changeScene();
+        });
+
+        this.helpButton = this.add.text(centerX, centerY+120, 'Help', {
+            fontFamily: 'Arial Black', fontSize: 40, color: '#ffffff',
+            stroke: '#000000', strokeThickness: 6,
+            align: 'center'
+        }).setOrigin(0.5).setDepth(100)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => this.helpButton.setScale(1.1))
+        .on('pointerout', () => this.helpButton.setScale(1))
+        .on('pointerdown', () => {
+            this.scene.start('Help');
+        });
+
+        this.creditsButton = this.add.text(centerX, centerY+190, 'Credits', {
+            fontFamily: 'Arial Black', fontSize: 40, color: '#ffffff',
+            stroke: '#000000', strokeThickness: 6,
+            align: 'center'
+        }).setOrigin(0.5).setDepth(100)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerover', () => this.creditsButton.setScale(1.1))
+        .on('pointerout', () => this.creditsButton.setScale(1))
+        .on('pointerdown', () => {
+            this.scene.start('Credits');
         });
 
         EventBus.emit('current-scene-ready', this);

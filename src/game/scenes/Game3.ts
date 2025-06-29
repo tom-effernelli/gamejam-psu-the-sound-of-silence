@@ -171,15 +171,19 @@ export class Game3 extends Scene
     private createEnemy(x: number, y: number, type: number = 1): Enemy {
         const enemy = new Enemy(this, x, y, this.player, type);
         
-        // Ajouter les collisions avec tous les layers
-        const worldLayerInfo = this.map.getLayer('Calque de Tuiles 1');
-        const decorLayerInfo = this.map.getLayer('Calque de Tuiles 2');
+        // Ajouter les collisions avec tous les layers en utilisant les indices
+        const worldLayerInfo = this.map.getLayer(0);  // Premier layer
+        const decorLayer1Info = this.map.getLayer(1); // Deuxième layer
+        const decorLayer2Info = this.map.getLayer(2); // Troisième layer
         
         if (worldLayerInfo && worldLayerInfo.tilemapLayer) {
             enemy.setupCollisions(worldLayerInfo.tilemapLayer);
         }
-        if (decorLayerInfo && decorLayerInfo.tilemapLayer) {
-            enemy.setupCollisions(decorLayerInfo.tilemapLayer);
+        if (decorLayer1Info && decorLayer1Info.tilemapLayer) {
+            enemy.setupCollisions(decorLayer1Info.tilemapLayer);
+        }
+        if (decorLayer2Info && decorLayer2Info.tilemapLayer) {
+            enemy.setupCollisions(decorLayer2Info.tilemapLayer);
         }
         
         this.enemies.push(enemy);
@@ -194,9 +198,9 @@ export class Game3 extends Scene
 
         // Chargement de la tilemap et du tileset
         console.log('Loading tilemap...');
-        this.load.tilemapTiledJSON('map3', 'assets/Niveau3.tmj');  // Changed map key and file
+        this.load.tilemapTiledJSON('map3', 'assets/Level3.tmj');
         console.log('Loading tileset...');
-        this.load.image('tiles', 'assets/dungeon.png');
+        this.load.image('tiles', 'assets/Environment.png');
         console.log('Assets loaded in preload');
         
         this.load.spritesheet('player', 'assets/Character.png', {
@@ -221,31 +225,39 @@ export class Game3 extends Scene
         // Trouver tous les objets "Door" dans le calque d'objets
         const doorObjects = this.map.filterObjects("Calque d'Objets 1", obj => obj.name === "Door");
         
+        console.log('Found door objects:', doorObjects);
+        
         if (doorObjects) {
             doorObjects.forEach(door => {
                 if (door.x !== undefined && door.y !== undefined) {
+                    console.log('Creating door sprite at position:', { x: 685, y: 434 });
+                    
                     // Créer un rectangle noir pour chaque porte
-                    const doorSprite = this.add.rectangle(door.x, door.y, 32, 32, 0x000000);
-                    doorSprite.setOrigin(0, 0); // Définir l'origine en haut à gauche
-                    doorSprite.setDepth(1); // S'assurer que le sprite est au-dessus du sol mais en-dessous de l'ombre
+                    //const doorSprite = this.add.rectangle(685, 434, 200, 200, 0xFF0000);  // Rouge pour debug
+                    //doorSprite.setOrigin(0, 0); // Définir l'origine en haut à gauche
+                    //doorSprite.setDepth(100); // Mettre au-dessus des autres éléments pour debug
+                    //console.log('Door sprite created:', doorSprite);
 
                     // Ajouter une zone de collision pour la porte
-                    const doorZone = this.add.rectangle(door.x, door.y, 32, 32);
+                    const doorZone = this.add.rectangle(685, 434, 50, 50);
                     this.physics.add.existing(doorZone, true);
                     
                     // Ajouter la collision avec le joueur
                     this.physics.add.overlap(this.player, doorZone, () => {
-                        // Jouer le son de porte verrouillée car il n'y a pas de clé dans Game3
-                        const musicScene = this.scene.get('Music') as Music;
-                        if (musicScene && musicScene.isSceneReady()) {
-                            console.log('Playing door locked sound from Game3 scene...');
-                            musicScene.playDoorLockedSound();
-                        } else {
-                            console.warn('Music scene not ready');
-                        }
+                        console.log('Player reached door at position:', { x: this.player.x, y: this.player.y });
+                        // Nettoyer la scène actuelle
+                        this.cleanup();
+                        
+                        // Réinitialiser le timer
+                        EventBus.emit('reset-timer');
+                        
+                        // Lancer la scène Victory
+                        this.scene.start('Victory');
                     });
                 }
             });
+        } else {
+            console.warn('No door objects found in the map!');
         }
     }
 
@@ -253,6 +265,15 @@ export class Game3 extends Scene
         console.log('Starting create function...');
         // Active la physique Arcade
         this.physics.world.setBounds(0, 0, 1280, 1280);
+
+        // S'assurer que la musique joue
+        const musicScene = this.scene.get('Music') as Music;
+        if (musicScene && musicScene.isSceneReady()) {
+            const music = musicScene.getBackgroundMusic();
+            if (music && !music.isPlaying) {
+                music.play();
+            }
+        }
 
         this.camera = this.cameras.main;
         
@@ -272,23 +293,28 @@ export class Game3 extends Scene
             }
             console.log('Tilemap created:', this.map);
             
+            // Lister tous les layers disponibles
+            console.log('Available layers in the map:', this.map.layers.map(layer => layer.name));
+            
             // Ajout du tileset à la map
             console.log('Adding tileset...');
-            const tileset = this.map.addTilesetImage('DungeonBasic', 'tiles');
+            const tileset = this.map.addTilesetImage('dungeonV3', 'tiles');
             if (!tileset) {
                 throw new Error('Failed to add tileset');
             }
             console.log('Tileset added:', tileset);
             
-            // Création des layers
-            const worldLayer = this.map.createLayer('Calque de Tuiles 1', tileset, 0, 0);
-            const decorLayer = this.map.createLayer('Calque de Tuiles 2', tileset, 0, 0);
+            // Création des layers en utilisant les indices
+            const worldLayer = this.map.createLayer(0, tileset, 0, 0); // Premier layer
+            const decorLayer1 = this.map.createLayer(1, tileset, 0, 0); // Deuxième layer
+            const decorLayer2 = this.map.createLayer(2, tileset, 0, 0); // Troisième layer
 
             // Activer les collisions sur les layers
-            if (worldLayer && decorLayer) {
+            if (worldLayer && decorLayer1 && decorLayer2) {
                 worldLayer.setCollisionByProperty({ collision: true });
-                decorLayer.setCollisionByProperty({ collision: true });
-                console.log('Collisions activated for both layers');
+                decorLayer1.setCollisionByProperty({ collision: true });
+                decorLayer2.setCollisionByProperty({ collision: true });
+                console.log('Collisions activated for all three layers');
             } else {
                 console.error('Failed to create layers');
                 return;  // Sortir si les layers ne sont pas créés
@@ -296,8 +322,8 @@ export class Game3 extends Scene
 
             // Création du joueur
             const spawnPoint = this.map.findObject("Calque d'Objets 1", obj => obj.name === "Player");
-            const spawnX = spawnPoint ? (spawnPoint.x || 350) : 350;
-            const spawnY = spawnPoint ? (spawnPoint.y || 500) : 500;
+            const spawnX = spawnPoint ? (spawnPoint.x || 683) : 683;
+            const spawnY = spawnPoint ? (spawnPoint.y || 797) : 797;
             
             this.player = this.physics.add.sprite(spawnX, spawnY, 'player');
             this.player.setScale(1.50);
@@ -315,8 +341,9 @@ export class Game3 extends Scene
 
             // Ajouter les collisions entre le joueur et les layers
             this.physics.add.collider(this.player, worldLayer);
-            this.physics.add.collider(this.player, decorLayer);
-            console.log('Player collisions added with both layers');
+            this.physics.add.collider(this.player, decorLayer1);
+            this.physics.add.collider(this.player, decorLayer2);
+            console.log('Player collisions added with all three layers');
 
             // Création des animations du joueur
             this.createPlayerAnimations();
@@ -329,13 +356,15 @@ export class Game3 extends Scene
                         const key = this.createKey(keyObj.x, keyObj.y);
                         // Ajouter les collisions pour la clé ici
                         this.physics.add.collider(key, worldLayer);
-                        this.physics.add.collider(key, decorLayer);
+                        this.physics.add.collider(key, decorLayer1);
+                        this.physics.add.collider(key, decorLayer2);
                     }
                 });
             }
 
-            // Création du premier ennemi
-            this.createEnemy(spawnX + 300, spawnY, 1);
+            // Création des portes
+            console.log('Creating door sprites...');
+            this.createDoorSprites();
 
             // Création des monstres supplémentaires
             const monsterObjects = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterHF");
@@ -343,6 +372,15 @@ export class Game3 extends Scene
                 monsterObjects.forEach(monsterObj => {
                     if (monsterObj.x !== undefined && monsterObj.y !== undefined) {
                         this.createEnemy(monsterObj.x, monsterObj.y, 1);
+                    }
+                });
+            }
+
+            const monsterObjects2 = this.map.filterObjects("Calque d'Objets 2", obj => obj.name === "MonsterLF");
+            if (monsterObjects2) {
+                monsterObjects2.forEach(monsterObj => {
+                    if (monsterObj.x !== undefined && monsterObj.y !== undefined) {
+                        this.createEnemy(monsterObj.x, monsterObj.y, 0);
                     }
                 });
             }
@@ -444,8 +482,8 @@ export class Game3 extends Scene
     }
 
     private cleanup() {
-        // Arrêter tous les sons
-        this.sound.stopAll();
+        // Ne pas arrêter tous les sons, seulement les effets sonores spécifiques
+        // this.sound.stopAll(); // On retire cette ligne
         
         // Nettoyer les événements
         this.events.off('update');
@@ -479,9 +517,12 @@ export class Game3 extends Scene
             return;
         }
 
+        // Log de la position du joueur
+        console.log('Player position:', { x: Math.round(this.player.x), y: Math.round(this.player.y) });
+
         // Gestion des déplacements du joueur
         const speed = 175;
-        const mentalDamageDistance = 150;
+        const mentalDamageDistance = 75;
 
         if (!this.cursors || !this.input.keyboard) {
             return;
