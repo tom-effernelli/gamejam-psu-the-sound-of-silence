@@ -329,7 +329,7 @@ export class Game2 extends Scene
             const spriteHeight = this.player.height;
 
             // Hitbox = 80% largeur, 20% hauteur en bas
-            const hitboxWidth = spriteWidth * 0.8;
+            const hitboxWidth = spriteWidth * 0.5;
             const hitboxHeight = spriteHeight * 0.2;
 
             const offsetX = (spriteWidth - hitboxWidth) / 2; // centré horizontalement

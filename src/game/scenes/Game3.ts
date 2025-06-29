@@ -332,7 +332,7 @@ export class Game3 extends Scene
             // Configuration de la hitbox du joueur
             const spriteWidth = this.player.width;
             const spriteHeight = this.player.height;
-            const hitboxWidth = spriteWidth * 0.8;
+            const hitboxWidth = spriteWidth * 0.5;
             const hitboxHeight = spriteHeight * 0.2;
             const offsetX = (spriteWidth - hitboxWidth) / 2;
             const offsetY = spriteHeight - hitboxHeight;
