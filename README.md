@@ -1,4 +1,10 @@
-# Phaser Next.js Template
+# The sound of Silence
+
+Try to make it through this manor without losing your mind! You have a fov linked to your mental health so its degrading over time. Make some noise to not feel alone, and reassure yourself!
+
+[Try it here](https://gamejam-psu-the-sound-of-silence.vercel.app/)
+
+# Tech stack
 
 This is a Phaser 3 project template that uses the Next.js framework. It includes a bridge for React to Phaser game communication, hot-reloading for quick development workflow and scripts to generate production-ready builds. 
 
@@ -234,3 +240,4 @@ All rights reserved.
 ## About this project
 
 This is a web based game developped during a GameJam. Team : [imbjdd](https://github.com/imbjdd), [tom-effernelli](https://github.com/tom-effernelli), Elwan Saillant
+
