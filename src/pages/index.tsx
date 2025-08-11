@@ -14,7 +14,7 @@ export default function Home() {
                 <title>The Sound of Silence</title>
                 <meta name="description" content="This game is just a banger." />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <link rel="icon" href="/favicon.png" />
+                <link rel="icon" href="/favicon.ico" />
             </Head>
             <main className={`${styles.main} ${inter.className}`}>
                 <AppWithoutSSR />
